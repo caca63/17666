@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>九骰預測系統 v4.5 路單分析版</title>
+    <title>九骰核心系統 v4.6 專業修正版</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <style>
         :root {
@@ -14,79 +14,91 @@
         body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 15px; }
         .container { max-width: 1300px; margin: auto; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; margin-top: 15px; }
-        .card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid #334155; position: relative; }
+        .card { background: var(--card); padding: 18px; border-radius: 12px; border: 1px solid #334155; }
         
-        /* 骰子與預測樣式 */
-        .dice-btn { width: 50px; height: 50px; font-size: 20px; margin: 4px; border-radius: 10px; border: 1px solid #475569; background: #1e293b; color: white; cursor: pointer; }
-        .dice-btn:hover { border-color: var(--primary); }
-        .prob { font-size: 48px; font-weight: 800; font-family: 'Courier New'; }
+        /* 骰子按鈕 */
+        .dice-btn { width: 48px; height: 48px; font-size: 18px; margin: 4px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; cursor: pointer; transition: 0.2s; }
+        .dice-btn:hover { background: var(--primary); transform: scale(1.05); }
         
-        /* 動態閃爍特效 */
-        .ultra-hot-blink { color: var(--ultra-hot); animation: blink 0.8s infinite alternate; text-shadow: 0 0 15px var(--ultra-hot); }
-        @keyframes blink { from { opacity: 1; } to { opacity: 0.4; } }
+        /* 數值顯示 */
+        .prob { font-size: 42px; font-weight: 800; font-family: 'Courier New'; margin: 5px 0; }
+        .ultra-hot-blink { color: var(--ultra-hot); animation: blink 0.6s infinite alternate; text-shadow: 0 0 20px var(--ultra-hot); }
+        @keyframes blink { from { opacity: 1; } to { opacity: 0.5; } }
 
-        /* 路單分析板 */
-        .road-analysis { background: #020617; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 13px; color: #10b981; }
-        .trend-tag { padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
-        .tag-long { background: var(--danger); color: white; } /* 長龍 */
-        .tag-jump { background: var(--primary); color: white; } /* 單跳 */
+        /* 勝率統計表 */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #334155; }
+        .win-text { color: var(--success); font-weight: bold; }
+        .lose-text { color: var(--danger); }
 
-        .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin: 1px; }
-        .dot.win { background: var(--success); }
-        .dot.lose { background: var(--danger); }
+        .history-tag { display: inline-block; background: #334155; padding: 2px 8px; border-radius: 4px; margin: 2px; font-size: 13px; }
+        .btn-main { background: var(--success); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-sec { background: #475569; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; margin-left: 8px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h2>🎲 九骰系統 v4.5 <span style="font-size: 14px; color: var(--success);">● 路單分析+特徵識別已啟用</span></h2>
+        <h2>🎲 九骰核心系統 v4.6 <span style="font-size: 12px; opacity: 0.7;">實戰修正版</span></h2>
     </header>
 
     <div class="card">
-        <h3>輸入開獎結果</h3>
         <div id="diceButtons"></div>
-        <div style="margin-top:10px;">待確認骰子：<span id="selectedDice" style="color:var(--warning); font-weight:bold;">-</span></div>
-        <div style="margin-top:10px;">
-            <button onclick="app.submitRound()" style="background:var(--success); color:white; padding:8px 20px; border:none; border-radius:5px; cursor:pointer;">確認新增</button>
-            <button onclick="app.deleteLast()" style="background:#475569; color:white; padding:8px 15px; border:none; border-radius:5px; margin-left:10px; cursor:pointer;">撤銷一步</button>
+        <div style="margin-top:12px; font-size: 1.1em;">選取中：<span id="selectedDice" style="color:var(--warning)">-</span></div>
+        <div style="margin-top:12px;">
+            <button class="btn-main" onclick="app.submitRound()">確認送出</button>
+            <button class="btn-sec" onclick="app.deleteLast()">撤銷一步</button>
+            <button class="btn-sec" style="background:#b91c1c" onclick="confirm('重置所有數據？') && location.reload()">清空重來</button>
         </div>
     </div>
 
     <div class="grid">
         <div class="card">
-            <h3>⚠️ 特殊機率監控</h3>
+            <h3>⚠️ 特殊機率監控 (豹子/17)</h3>
             <div id="specialProb" class="prob">0.00%</div>
-            <div id="patternStatus" style="font-size:13px; margin-top:5px; color:#94a3b8;">等待分析...</div>
-            <div id="gapInfo" style="font-size:14px; margin-top:5px;"></div>
+            <div id="patternStatus" style="color:var(--warning); font-weight:bold; height:20px;">分析中...</div>
+            <p id="gapInfo" style="font-size:14px; color:#94a3b8; margin-top:10px;"></p>
         </div>
 
         <div class="card">
-            <h3>📊 路單分析系統</h3>
-            <div id="roadAdvice" class="road-analysis" style="margin-bottom:10px;">分析中...</div>
-            <div style="font-size: 14px;">
-                🛡️ 保守預測：<b id="predCons" style="font-size:1.2em;">-</b><br>
-                🔥 高頻預測：<b id="predAggr" style="font-size:1.2em;">-</b>
-            </div>
+            <h3>📊 勝率統計表</h3>
+            <table>
+                <tr>
+                    <th>模式</th>
+                    <th>近 20 局</th>
+                    <th>近 100 局</th>
+                </tr>
+                <tr>
+                    <td>🛡️ 保守 (跟龍)</td>
+                    <td id="accCons20" class="win-text">-</td>
+                    <td id="accCons100">-</td>
+                </tr>
+                <tr>
+                    <td>🔥 高頻 (反轉)</td>
+                    <td id="accAggr20" class="win-text">-</td>
+                    <td id="accAggr100">-</td>
+                </tr>
+            </table>
         </div>
 
-        <div class="card">
-            <h3>📈 實戰勝率</h3>
-            <div style="font-size: 14px;">
-                保守勝率：<span id="accCons" class="success">0%</span> (近 20 局)<br>
-                高頻勝率：<span id="accAggr" class="danger">0%</span> (近 20 局)
+        <div class="card" id="roadCard">
+            <h3>📈 實時趨勢分析</h3>
+            <div id="roadAdvice" style="background:#020617; padding:10px; border-radius:6px; color:#10b981; font-family:monospace; min-height:40px;">數據不足...</div>
+            <div style="margin-top:15px; font-size: 1.1em;">
+                預測結果：<b id="nextPred" style="color:var(--primary); font-size:1.4em;">-</b>
             </div>
-            <div id="trendDots" style="margin-top:10px;"></div>
         </div>
     </div>
 
     <div class="card">
+        <h3>機率走勢趨勢</h3>
         <div id="chart" style="height:250px;"></div>
     </div>
 
     <div class="card">
-        <h3>最近歷史 (30局)</h3>
-        <div id="historyList" style="font-size: 12px; display: flex; flex-wrap: wrap; gap: 5px;"></div>
+        <h3>歷史記錄 (近 30 局)</h3>
+        <div id="historyList"></div>
     </div>
 </div>
 
@@ -96,7 +108,8 @@ const app = {
         rounds: [],
         selected: [],
         probs: [],
-        preds: { cons: [], aggr: [] },
+        predsCons: [],
+        predsAggr: [],
         intervals: [],
         lastSpecial: null
     },
@@ -128,6 +141,9 @@ const app = {
         const sum = dice.reduce((a,b)=>a+b,0);
         const isSpec = (dice[0]===dice[1] && dice[1]===dice[2]) || sum === 17;
         
+        // 預測下一局邏輯 (在存入新結果前，先分析當前狀態對下一局的影響)
+        this.analyzeNext();
+
         if(isSpec) {
             if(this.data.lastSpecial !== null) this.data.intervals.push(this.data.rounds.length - this.data.lastSpecial);
             this.data.lastSpecial = this.data.rounds.length;
@@ -139,10 +155,30 @@ const app = {
         this.calculate();
     },
 
-    // 核心分析邏輯
+    analyzeNext() {
+        const history = this.data.rounds;
+        if(history.length === 0) {
+            this.data.predsCons.push("-");
+            this.data.predsAggr.push("-");
+            return;
+        }
+
+        const lastSize = history[history.length-1].size;
+        
+        // 1. 保守模式 (跟隨最後一局)
+        this.data.predsCons.push(lastSize);
+
+        // 2. 高頻模式 (偵測連龍後反轉)
+        let streak = 1;
+        for(let i = history.length-2; i>=0; i--) {
+            if(history[i].size === lastSize) streak++; else break;
+        }
+        // 如果連超過 2 局，高頻預測反轉，否則跟隨
+        this.data.predsAggr.push(streak >= 2 ? (lastSize === "大" ? "小" : "大") : lastSize);
+    },
+
     calculate() {
         this.calcSpecialProb();
-        this.analyzeRoad();
         this.refreshUI();
     },
 
@@ -150,102 +186,74 @@ const app = {
         const rounds = this.data.rounds;
         const gap = this.data.lastSpecial === null ? rounds.length : rounds.length - 1 - this.data.lastSpecial;
         
-        // 1. 基礎權重
         let weight = 1.0;
-        const decay = Math.exp(-Math.pow(gap - 8, 2) / 10); // 圍繞間隔 8 局的波峰
-        weight += decay;
-        if(gap > 20) weight += (gap-20)*0.1;
+        weight += Math.exp(-Math.pow(gap - 8, 2) / 10); // 間隔 8 局波峰
+        if(gap > 18) weight += (gap-18)*0.08;
 
-        // 2. 你的規律：九骰特徵識別 (2同+2同... 4同+4同... 等)
+        // 九骰特徵識別
         let patternBonus = 1.0;
-        let patternDesc = "隨機震盪中";
+        let patternDesc = "一般隨機";
         
         if(rounds.length >= 3) {
             const last3 = rounds.slice(-3);
             const all9Dice = last3.flatMap(r => r.dice);
-            
-            // 統計這 9 顆骰子中，各個數字出現次數
             const counts = {};
             all9Dice.forEach(n => counts[n] = (counts[n] || 0) + 1);
-            const freq = Object.values(counts).sort((a,b) => b-a); // 降序排列次數
+            const freq = Object.values(counts).sort((a,b) => b-a);
             
-            // 比對特徵
-            if (freq[0] === 4 && freq[1] === 4) {
-                patternBonus = 2.2; patternDesc = "🔥 發現 4同+4同 特徵！";
-            } else if (freq[0] === 3 && freq[1] === 3 && freq[2] === 3) {
-                patternBonus = 2.0; patternDesc = "🔥 發現 3同+3同+3同 特徵！";
-            } else if (freq[0] === 3 && freq[1] === 3 && freq[2] === 2) {
-                patternBonus = 1.8; patternDesc = "🔥 發現 3同+3同+2同 特徵！";
-            } else if (freq.filter(f => f === 2).length >= 4) {
-                patternBonus = 1.6; patternDesc = "🔥 發現 2同x4 特徵！";
+            // 你的核心邏輯實作
+            if (freq[0] >= 4 && freq[1] >= 4) {
+                patternBonus = 2.2; patternDesc = "⭐ 特徵：4同+4同 (極熱)";
+            } else if (freq[0] >= 3 && freq[1] >= 3 && freq[2] >= 3) {
+                patternBonus = 2.0; patternDesc = "⭐ 特徵：3同+3同+3同 (極熱)";
+            } else if (freq[0] >= 3 && freq[1] >= 3 && freq[2] >= 2) {
+                patternBonus = 1.7; patternDesc = "⭐ 特徵：3同+3同+2同";
+            } else if (freq.filter(f => f >= 2).length >= 4) {
+                patternBonus = 1.5; patternDesc = "⭐ 特徵：2同 x 4 (高機率)";
             }
         }
 
-        const finalProb = Math.min(0.0417 * weight * patternBonus * 100, 35.0); // 最高限 35%
+        const finalProb = Math.min(4.17 * weight * patternBonus, 30.0);
         this.data.probs.push(finalProb.toFixed(2));
 
         const el = document.getElementById("specialProb");
         el.innerText = finalProb.toFixed(2) + "%";
         el.className = "prob " + (patternBonus > 1.2 ? "ultra-hot-blink" : (finalProb > 10 ? "danger" : ""));
         document.getElementById("patternStatus").innerText = patternDesc;
-        document.getElementById("gapInfo").innerText = `當前間隔：${gap} 局`;
-    },
-
-    analyzeRoad() {
-        const history = this.data.rounds;
-        if(history.length === 0) return;
-
-        const sizes = history.map(r => r.size);
-        const lastSize = sizes[sizes.length-1];
-        
-        // 1. 路單特徵偵測
-        let roadAdvice = "觀察中...";
-        let streak = 1;
-        for(let i = sizes.length-2; i>=0; i--) {
-            if(sizes[i] === lastSize) streak++; else break;
-        }
-
-        if(streak >= 3) {
-            roadAdvice = `<span class="trend-tag tag-long">長龍 ${streak} 局</span> 建議跟龍：繼續【${lastSize}】`;
-        } else if (sizes.length >= 4) {
-            const last4 = sizes.slice(-4).join("");
-            if(last4 === "大小大小" || last4 === "小大小大") {
-                roadAdvice = `<span class="trend-tag tag-jump">單跳趨勢</span> 建議反投：【${lastSize === "大" ? "小" : "大"}】`;
-            }
-        }
-
-        document.getElementById("roadAdvice").innerHTML = roadAdvice;
-
-        // 2. 預測計算
-        const cons = lastSize; // 保守跟龍
-        const aggr = streak >= 2 ? (lastSize === "大" ? "小" : "大") : lastSize; // 高頻看反轉
-        
-        this.data.preds.cons.push(cons);
-        this.data.preds.aggr.push(aggr);
-        
-        document.getElementById("predCons").innerText = cons;
-        document.getElementById("predAggr").innerText = aggr;
+        document.getElementById("gapInfo").innerText = `當前間隔：${gap} 局 | 歷史間隔：${[...this.data.intervals].reverse().slice(0,5).join(" - ")}`;
     },
 
     refreshUI() {
-        // 更新勝率與小點
         const rounds = this.data.rounds;
-        if(rounds.length > 1) {
-            const resultsC = [];
-            for(let i=1; i<rounds.length; i++) resultsC.push(this.data.preds.cons[i-1] === rounds[i].size);
-            
-            const winRate = (resultsC.filter(x=>x).length / resultsC.length * 100).toFixed(1);
-            document.getElementById("accCons").innerText = winRate + "%";
-            
-            const dotBox = document.getElementById("trendDots");
-            dotBox.innerHTML = resultsC.slice(-20).map(win => `<div class="dot ${win?'win':'lose'}"></div>`).join("");
-        }
+        const total = rounds.length;
+        if(total < 2) return;
+
+        // 計算勝率
+        const calcWinRate = (preds, limit) => {
+            let win = 0, count = 0;
+            const start = Math.max(1, total - limit);
+            for(let i = start; i < total; i++) {
+                if(preds[i-1] === rounds[i].size) win++;
+                count++;
+            }
+            return count === 0 ? "0.0%" : (win/count*100).toFixed(1) + "%";
+        };
+
+        document.getElementById("accCons20").innerText = calcWinRate(this.data.predsCons, 20);
+        document.getElementById("accCons100").innerText = calcWinRate(this.data.predsCons, 100);
+        document.getElementById("accAggr20").innerText = calcWinRate(this.data.predsAggr, 20);
+        document.getElementById("accAggr100").innerText = calcWinRate(this.data.predsAggr, 100);
+
+        // 路單建議
+        const lastSize = rounds[total-1].size;
+        let streak = 0;
+        for(let i=total-1; i>=0; i--) { if(rounds[i].size === lastSize) streak++; else break; }
+        document.getElementById("roadAdvice").innerText = `${lastSize} 連續 ${streak} 局。建議：${streak >= 3 ? '跟龍中' : '穩定觀測'}`;
+        document.getElementById("nextPred").innerText = (streak >= 2 ? (lastSize === '大' ? '小' : '大') : lastSize);
 
         // 歷史列表
         document.getElementById("historyList").innerHTML = rounds.slice(-30).reverse().map(r => `
-            <div style="background:#334155; padding:3px 8px; border-radius:4px;">
-                ${r.dice.join("")} <b style="color:${r.size==='大'?'#f87171':'#38bdf8'}">${r.size}</b> ${r.isSpec?'⭐':''}
-            </div>
+            <span class="history-tag">${r.dice.join("")} <b style="color:${r.size==='大'?'#f87171':'#38bdf8'}">${r.size}</b> ${r.isSpec?'⭐':''}</span>
         `).join("");
 
         this.updateChart();
@@ -254,16 +262,16 @@ const app = {
     updateChart() {
         this.chart.setOption({
             xAxis: { type: 'category', data: this.data.probs.map((_,i)=>i+1) },
-            yAxis: { type: 'value', max: 40 },
-            series: [{ data: this.data.probs, type: 'line', smooth: true, color: '#3b82f6' }]
+            yAxis: { type: 'value', max: 25 }, // 下修上限，讓波動更明顯
+            series: [{ data: this.data.probs, type: 'line', smooth: true, color: '#3b82f6', areaStyle: { opacity: 0.1 } }]
         });
     },
 
     deleteLast() {
         this.data.rounds.pop();
         this.data.probs.pop();
-        this.data.preds.cons.pop();
-        this.data.preds.aggr.pop();
+        this.data.predsCons.pop();
+        this.data.predsAggr.pop();
         this.calculate();
     }
 };
