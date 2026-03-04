@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>九骰核心系統 v5.0 終極邏輯版</title>
+    <title>九骰核心系統 v5.4 終極整合版</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <style>
         :root {
             --bg: #0f172a; --card: #1e293b; --text: #f1f5f9;
             --primary: #3b82f6; --success: #22c55e; --danger: #ef4444; --warning: #facc15;
-            --ultra-hot: #ff00ea;
+            --hot: #f97316; --ultra: #ff00ea;
         }
         body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 15px; }
         .container { max-width: 1300px; margin: auto; }
@@ -17,8 +17,13 @@
         .card { background: var(--card); padding: 18px; border-radius: 12px; border: 1px solid #334155; }
         
         .dice-btn { width: 45px; height: 45px; font-size: 18px; margin: 3px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; cursor: pointer; }
-        .prob { font-size: 42px; font-weight: 800; font-family: 'Courier New'; margin: 5px 0; }
-        .ultra-hot-blink { color: var(--ultra-hot); animation: blink 0.5s infinite alternate; text-shadow: 0 0 15px var(--ultra-hot); }
+        .dice-btn:hover { border-color: var(--primary); }
+
+        /* 豹子監控顏色分級 */
+        .prob { font-size: 42px; font-weight: 800; font-family: 'Courier New'; margin: 5px 0; transition: 0.3s; color: white; }
+        .level-warn { color: var(--warning); text-shadow: 0 0 10px rgba(250, 204, 21, 0.3); }
+        .level-hot { color: var(--hot); text-shadow: 0 0 15px rgba(249, 115, 22, 0.5); }
+        .level-ultra { color: var(--ultra); animation: blink 0.5s infinite alternate; text-shadow: 0 0 20px var(--ultra); }
         @keyframes blink { from { opacity: 1; } to { opacity: 0.4; } }
 
         table { width: 100%; border-collapse: collapse; margin-top: 5px; }
@@ -42,7 +47,7 @@
 
 <div class="container">
     <header>
-        <h2>🎲 九骰系統 v5.0 <span style="font-size: 12px; color:var(--warning)">● 補位邏輯強化版</span></h2>
+        <h2>🎲 九骰系統 v5.4 <span style="font-size: 12px; color:var(--warning)">● 終極邏輯整合版</span></h2>
     </header>
 
     <div class="card">
@@ -56,21 +61,16 @@
 
     <div class="grid">
         <div class="card">
-            <h3>⚠️ 豹子監控</h3>
+            <h3>⚠️ 豹子特徵監控</h3>
             <div id="specialProb" class="prob">0.00%</div>
-            <div id="patternStatus" style="color:var(--warning); font-weight:bold; height:22px;">掃描中...</div>
+            <div id="patternStatus" style="color:var(--warning); font-weight:bold; height:22px;"></div>
             <p id="gapInfo" style="font-size:13px; color:#94a3b8; margin-top:10px;"></p>
         </div>
 
         <div class="card">
-            <h3>📊 預測統計</h3>
+            <h3>📊 雙模式統計 (20/100局)</h3>
             <table>
-                <tr>
-                    <th>模式</th>
-                    <th>下一局</th>
-                    <th>20局</th>
-                    <th>100局</th>
-                </tr>
+                <tr><th>模式</th><th>下一局</th><th>20局</th><th>100局</th></tr>
                 <tr>
                     <td>🛡️ 保守</td>
                     <td id="nextCons" class="pred-box">-</td>
@@ -87,7 +87,7 @@
         </div>
 
         <div class="card">
-            <h3>📈 路單邏輯引擎</h3>
+            <h3>📈 核心邏輯引擎 (優先級修正)</h3>
             <div id="roadAdvice" class="road-msg">等待數據...</div>
             
             <div class="analysis-footer">
@@ -99,156 +99,119 @@
         </div>
     </div>
 
-    <div class="card">
-        <div id="chart" style="height:230px;"></div>
-    </div>
-
-    <div class="card">
-        <h3>歷史記錄</h3>
-        <div id="historyList"></div>
-    </div>
+    <div class="card"><div id="chart" style="height:230px;"></div></div>
+    <div class="card"><h3>歷史記錄 (近 30 局)</h3><div id="historyList"></div></div>
 </div>
 
 <script>
 const app = {
-    data: {
-        rounds: [],
-        selected: [],
-        probs: [],
-        predsCons: [],
-        predsAggr: [],
-        intervals: [],
-        lastSpecial: null
-    },
-
-    init() {
-        this.renderBtns();
-        this.chart = echarts.init(document.getElementById('chart'));
-        this.updateChart();
-    },
-
+    data: { rounds: [], selected: [], probs: [], predsCons: [], predsAggr: [], intervals: [], lastSpecial: null },
+    init() { this.renderBtns(); this.chart = echarts.init(document.getElementById('chart')); this.updateChart(); },
     renderBtns() {
         const c = document.getElementById("diceButtons");
         for(let i=1; i<=6; i++) {
-            const b = document.createElement("button");
-            b.innerText = i; b.className = "dice-btn";
-            b.onclick = () => {
-                if(this.data.selected.length < 3) {
-                    this.data.selected.push(i);
-                    document.getElementById("selectedDice").innerText = this.data.selected.join(",");
-                }
-            };
+            const b = document.createElement("button"); b.innerText = i; b.className = "dice-btn";
+            b.onclick = () => { if(this.data.selected.length < 3) { this.data.selected.push(i); document.getElementById("selectedDice").innerText = this.data.selected.join(","); } };
             c.appendChild(b);
         }
     },
-
     submitRound() {
         if(this.data.selected.length !== 3) return;
-        const dice = [...this.data.selected];
-        const sum = dice.reduce((a,b)=>a+b,0);
+        const dice = [...this.data.selected]; const sum = dice.reduce((a,b)=>a+b,0);
         const isSpec = (dice[0]===dice[1] && dice[1]===dice[2]) || sum === 17;
-
         this.data.rounds.push({ dice, sum, isSpec, size: sum >= 11 ? "大" : "小" });
-        
         if(isSpec) {
             if(this.data.lastSpecial !== null) this.data.intervals.push(this.data.rounds.length - 1 - this.data.lastSpecial);
             this.data.lastSpecial = this.data.rounds.length - 1;
         }
-
-        this.data.selected = [];
-        document.getElementById("selectedDice").innerText = "-";
-        this.calculate();
+        this.data.selected = []; document.getElementById("selectedDice").innerText = "-"; this.calculate();
     },
-
-    calculate() {
-        this.calcSpecialProb();
-        this.analyzePatterns();
-        this.refreshUI();
-    },
+    calculate() { this.calcSpecialProb(); this.analyzePatterns(); this.refreshUI(); },
 
     calcSpecialProb() {
-        const rounds = this.data.rounds;
-        const total = rounds.length;
+        const rounds = this.data.rounds; const total = rounds.length;
         const gap = this.data.lastSpecial === null ? total : total - 1 - this.data.lastSpecial;
-        let weight = 1.0;
-        weight += Math.exp(-Math.pow(gap - 8, 2) / 10); 
-        if(gap > 15) weight += (gap-15)*0.1;
-
-        let patternBonus = 1.0;
-        let patternDesc = "";
+        let weight = 1.0; weight += Math.exp(-Math.pow(gap - 8, 2) / 10); if(gap > 15) weight += (gap-15)*0.1;
+        
+        let patternBonus = 1.0; let patternDesc = "";
         if(total >= 3) {
             const all9 = rounds.slice(-3).flatMap(r => r.dice);
-            const counts = {};
-            all9.forEach(n => counts[n] = (counts[n] || 0) + 1);
+            const counts = {}; all9.forEach(n => counts[n] = (counts[n] || 0) + 1);
             const freq = Object.values(counts).sort((a,b)=>b-a);
             if(freq[0]>=4 && freq[1]>=4) { patternBonus = 2.5; patternDesc = "🔥 4同+4同 特徵！"; }
-            else if(freq[0]>=3 && freq[1]>=3 && freq[2]>=3) { patternBonus = 2.2; patternDesc = "🔥 3同x3 特徵！"; }
-            else if(freq[0]>=3 && freq[1]>=3) { patternBonus = 1.6; patternDesc = "⭐ 雙對聚集"; }
+            else if(freq[0]>=3 && freq[1]>=3) { patternBonus = 1.8; patternDesc = "⭐ 號碼高度密集"; }
         }
-
         const finalProb = Math.min(4.17 * weight * patternBonus, 20.0);
         this.data.probs.push(finalProb.toFixed(2));
-        document.getElementById("specialProb").innerText = finalProb.toFixed(2) + "%";
-        document.getElementById("specialProb").className = "prob " + (patternBonus > 1.5 ? "ultra-hot-blink" : "");
+        const el = document.getElementById("specialProb");
+        el.innerText = finalProb.toFixed(2) + "%";
+        
+        // 全時變色監控
+        el.className = "prob";
+        if (finalProb >= 15) el.classList.add("level-ultra");
+        else if (finalProb >= 12) el.classList.add("level-hot");
+        else if (finalProb >= 8) el.classList.add("level-warn");
+
         document.getElementById("patternStatus").innerText = patternDesc;
         document.getElementById("gapInfo").innerText = `間隔：${gap} | 歷史：${[...this.data.intervals].reverse().slice(0,5).join(",")}`;
     },
 
     analyzePatterns() {
-        const rounds = this.data.rounds;
-        const total = rounds.length;
-        if(total === 0) return;
-
-        const sizes = rounds.map(r => r.size);
-        const last = sizes[total-1];
-        this.data.predsCons.push(last); // 保守始終跟隨最後一手
-
-        let nextAggr = last;
-        let msg = "觀察中...";
-        const s = sizes.slice(-10).join("");
-
-        // 核心規律引擎
-        // 1. 長龍
-        let streak = 0;
-        for(let i=total-1; i>=0; i--) { if(sizes[i] === last) streak++; else break; }
+        const rounds = this.data.rounds; const total = rounds.length; if(total === 0) return;
+        const sizes = rounds.map(r => r.size); const last = sizes[total-1];
+        this.data.predsCons.push(last);
         
-        if(streak >= 3) {
-            msg = `【長龍】已連 ${streak} 局，下注建議：${last}`;
-            nextAggr = (streak >= 6) ? (last === '大' ? '小' : '大') : last;
+        let nextAggr = last; let msg = "規律分析中...";
+        const s = sizes.slice(-12).join("");
+        let streak = 0; for(let i=total-1; i>=0; i--) { if(sizes[i] === last) streak++; else break; }
+
+        // 規律特徵判定
+        const is13Pattern = (s.endsWith("大小小小") || s.endsWith("小大大大"));
+        const is13Growing = ((s.endsWith("大小小") && sizes[total-4] === "大") || (s.endsWith("小大大") && sizes[total-4] === "小"));
+        const is12Full = (s.endsWith("大小小") || s.endsWith("小大大"));
+        const is12Growing = ((s.endsWith("大小") && sizes[total-3] === "大") || (s.endsWith("小大") && sizes[total-3] === "小"));
+
+        // --- 核心優先級引擎 (長龍 > 1-3 > 1-2 > 雙跳) ---
+
+        // 1. 長龍 (只有在非一跳三完成時優先)
+        if(streak >= 3 && !is13Pattern) {
+            msg = `【長龍】${last} 已連 ${streak} 局，下注建議：${last}`;
+            nextAggr = (streak >= 6) ? (last === "大" ? "小" : "大") : last;
         }
-        // 2. 雙跳 (大大小小) - 優先權高
-        else if (s.endsWith("大大小") || s.endsWith("小小大")) {
-            const target = s.endsWith("大大小") ? "小" : "大";
-            msg = `【雙跳趨勢】補位對子，下注建議：${target}`;
-            nextAggr = target;
+        // 2. 一跳三 (1-3)
+        else if (is13Pattern) {
+            nextAggr = s.endsWith("小") ? "大" : "小";
+            msg = `【一跳三】循環達成，下注建議：${nextAggr}`;
         }
+        else if (is13Growing) {
+            nextAggr = s.endsWith("小") ? "小" : "大";
+            msg = `【一跳三趨勢】補位第3顆，下注建議：${nextAggr}`;
+        }
+        // 3. 一跳二 (1-2)
+        else if (is12Full) {
+            nextAggr = s.endsWith("小") ? "大" : "小";
+            msg = `【一跳二】循環結束，下注建議：${nextAggr}`;
+        }
+        else if (is12Growing) {
+            nextAggr = s.endsWith("小") ? "小" : "大";
+            msg = `【一跳二趨勢】補位第2顆，下注建議：${nextAggr}`;
+        }
+        // 4. 雙跳 (2-2)
         else if (s.endsWith("大大小小") || s.endsWith("小小大大")) {
-            const target = s.endsWith("小小") ? "大" : "小";
-            msg = `【雙跳循環】規律切換，下注建議：${target}`;
-            nextAggr = target;
+            nextAggr = s.endsWith("小") ? "大" : "小";
+            msg = `【雙跳】換向循環，下注建議：${nextAggr}`;
         }
-        // 3. 一跳二 (大小小 / 小大大)
-        else if (s.endsWith("大小") && sizes[total-3] === "大") {
-            msg = "【一跳二趨勢】規律發展中，建議下注：小";
-            nextAggr = "小";
+        else if (s.endsWith("大大小") || s.endsWith("小小大")) {
+            nextAggr = s.endsWith("小") ? "小" : "大";
+            msg = `【雙跳趨勢】補位對子，下注建議：${nextAggr}`;
         }
-        else if (s.endsWith("小大") && sizes[total-3] === "小") {
-            msg = "【一跳二趨勢】規律發展中，建議下注：大";
-            nextAggr = "大";
-        }
-        else if (s.endsWith("大小小") || s.endsWith("小大大")) {
-            const target = s.endsWith("小") ? "大" : "小";
-            msg = `【一跳二完成】重啟循環，下注建議：${target}`;
-            nextAggr = target;
-        }
-        // 4. 單跳
+        // 5. 單跳
         else if (s.endsWith("大小大小") || s.endsWith("小大小大")) {
-            const target = last === "大" ? "小" : "大";
-            msg = `【單跳】交替中，下注建議：${target}`;
-            nextAggr = target;
+            nextAggr = (last === "大" ? "小" : "大");
+            msg = `【單跳】持續中，下注建議：${nextAggr}`;
         }
         else {
-            msg = `常態規律，建議下注：${last}`;
+            msg = `常規隨行，下注建議：${last}`;
             nextAggr = last;
         }
 
@@ -257,57 +220,31 @@ const app = {
     },
 
     refreshUI() {
-        const rounds = this.data.rounds;
-        const total = rounds.length;
-        if(total === 0) return;
-
-        const cP = this.data.predsCons[total-1];
-        const aP = this.data.predsAggr[total-1];
-        document.getElementById("nextCons").innerText = cP;
-        document.getElementById("nextCons").className = `pred-box ${cP === '大' ? 'big' : 'small'}`;
-        document.getElementById("nextAggr").innerText = aP;
-        document.getElementById("nextAggr").className = `pred-box ${aP === '大' ? 'big' : 'small'}`;
-
+        const rounds = this.data.rounds; const total = rounds.length; if(total === 0) return;
+        const cP = this.data.predsCons[total-1]; const aP = this.data.predsAggr[total-1];
+        document.getElementById("nextCons").innerText = cP; document.getElementById("nextCons").className = `pred-box ${cP === '大' ? 'big' : 'small'}`;
+        document.getElementById("nextAggr").innerText = aP; document.getElementById("nextAggr").className = `pred-box ${aP === '大' ? 'big' : 'small'}`;
+        
         const renderData = (acc20, acc100, dotId, predArr) => {
             let win20 = 0, count20 = 0, win100 = 0, count100 = 0, dotsHtml = "";
             for(let i = 1; i < total; i++) {
                 const isWin = (predArr[i-1] === rounds[i].size);
                 if(i >= total - 20) { if(isWin) win20++; count20++; }
                 if(i >= total - 100) { if(isWin) win100++; count100++; }
-                if(i >= total - 25) {
-                    dotsHtml = `<div class="dot ${isWin?'win':'lose'}"></div>` + dotsHtml;
-                }
+                if(i >= total - 25) { dotsHtml = `<div class="dot ${isWin?'win':'lose'}"></div>` + dotsHtml; }
             }
             document.getElementById(acc20).innerText = count20 === 0 ? "-" : (win20/count20*100).toFixed(1) + "%";
             document.getElementById(acc100).innerText = count100 === 0 ? "-" : (win100/count100*100).toFixed(1) + "%";
             document.getElementById(dotId).innerHTML = dotsHtml;
         };
-
         renderData("accCons20", "accCons100", "dotsCons", this.data.predsCons);
         renderData("accAggr20", "accAggr100", "dotsAggr", this.data.predsAggr);
-
-        document.getElementById("historyList").innerHTML = rounds.slice(-30).reverse().map(r => `
-            <span class="history-tag">${r.dice.join("")} <b style="color:${r.size==='大'?'#f87171':'#38bdf8'}">${r.size}</b> ${r.isSpec?'⭐':''}</span>
-        `).join("");
+        document.getElementById("historyList").innerHTML = rounds.slice(-30).reverse().map(r => `<span class="history-tag">${r.dice.join("")} <b style="color:${r.size==='大'?'#f87171':'#38bdf8'}">${r.size}</b> ${r.isSpec?'⭐':''}</span>`).join("");
         this.updateChart();
     },
-
-    updateChart() {
-        this.chart.setOption({
-            xAxis: { data: this.data.probs.map((_,i)=>i+1) },
-            yAxis: { max: 18, splitLine: { lineStyle: { color: '#334155' } } },
-            series: [{ data: this.data.probs, type: 'line', smooth: true, color: '#3b82f6', areaStyle: { opacity: 0.1 } }]
-        });
-    },
-
-    deleteLast() {
-        if(this.data.rounds.length === 0) return;
-        this.data.rounds.pop(); this.data.probs.pop();
-        this.data.predsCons.pop(); this.data.predsAggr.pop();
-        this.calculate();
-    }
+    updateChart() { this.chart.setOption({ xAxis: { data: this.data.probs.map((_,i)=>i+1) }, yAxis: { max: 18, splitLine: { lineStyle: { color: '#334155' } } }, series: [{ data: this.data.probs, type: 'line', smooth: true, color: '#3b82f6', areaStyle: { opacity: 0.1 } }] }); },
+    deleteLast() { if(this.data.rounds.length === 0) return; this.data.rounds.pop(); this.data.probs.pop(); this.data.predsCons.pop(); this.data.predsAggr.pop(); this.calculate(); }
 };
-
 app.init();
 </script>
 </body>
