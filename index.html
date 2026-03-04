@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>九骰核心系統 v5.4 最終整合版</title>
+    <title>九骰核心系統 v5.5 邏輯精度修正版</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <style>
         :root {
@@ -15,30 +15,23 @@
         .container { max-width: 1300px; margin: auto; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; margin-top: 15px; }
         .card { background: var(--card); padding: 18px; border-radius: 12px; border: 1px solid #334155; }
-        
         .dice-btn { width: 45px; height: 45px; font-size: 18px; margin: 3px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; cursor: pointer; }
-        .dice-btn:hover { border-color: var(--primary); }
-
-        /* 豹子監控顏色分級 */
         .prob { font-size: 42px; font-weight: 800; font-family: 'Courier New'; margin: 5px 0; transition: 0.3s; color: white; }
         .level-warn { color: var(--warning); text-shadow: 0 0 10px rgba(250, 204, 21, 0.3); }
         .level-hot { color: var(--hot); text-shadow: 0 0 15px rgba(249, 115, 22, 0.5); }
         .level-ultra { color: var(--ultra); animation: blink 0.5s infinite alternate; text-shadow: 0 0 20px var(--ultra); }
         @keyframes blink { from { opacity: 1; } to { opacity: 0.4; } }
-
         table { width: 100%; border-collapse: collapse; margin-top: 5px; }
         th, td { padding: 10px; text-align: center; border-bottom: 1px solid #334155; font-size: 14px; }
         .pred-box { font-size: 22px; font-weight: bold; border-radius: 4px; padding: 4px 8px; }
         .big { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
         .small { color: var(--primary); background: rgba(59, 130, 246, 0.1); }
-
         .analysis-footer { margin-top: 15px; border-top: 1px dashed #475569; padding-top: 10px; }
         .dot-label { font-size: 12px; color: #94a3b8; margin-bottom: 5px; display: block; }
         .dot-container { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
         .dot { width: 12px; height: 12px; border-radius: 50%; }
         .dot.win { background: var(--success); box-shadow: 0 0 5px var(--success); }
         .dot.lose { background: var(--danger); }
-
         .road-msg { background: #020617; padding: 12px; border-radius: 8px; color: #10b981; font-family: monospace; font-size: 15px; min-height: 40px; border-left: 4px solid var(--success); }
         .history-tag { display: inline-block; background: #334155; padding: 2px 6px; border-radius: 4px; margin: 2px; font-size: 12px; }
     </style>
@@ -46,9 +39,7 @@
 <body>
 
 <div class="container">
-    <header>
-        <h2>🎲 九骰系統 v5.4 <span style="font-size: 12px; color:var(--warning)">● 最終邏輯整合版</span></h2>
-    </header>
+    <header><h2>🎲 九骰系統 v5.5 <span style="font-size: 12px; color:var(--primary)">● 邏輯精度強化版</span></h2></header>
 
     <div class="card">
         <div id="diceButtons"></div>
@@ -66,41 +57,26 @@
             <div id="patternStatus" style="color:var(--warning); font-weight:bold; height:22px;"></div>
             <p id="gapInfo" style="font-size:13px; color:#94a3b8; margin-top:10px;"></p>
         </div>
-
         <div class="card">
-            <h3>📊 雙模式統計 (20/100局)</h3>
+            <h3>📊 雙模式統計</h3>
             <table>
                 <tr><th>模式</th><th>下一局</th><th>20局</th><th>100局</th></tr>
-                <tr>
-                    <td>🛡️ 保守</td>
-                    <td id="nextCons" class="pred-box">-</td>
-                    <td id="accCons20" style="color:var(--success); font-weight:bold;">-</td>
-                    <td id="accCons100">-</td>
-                </tr>
-                <tr>
-                    <td>🔥 高頻</td>
-                    <td id="nextAggr" class="pred-box">-</td>
-                    <td id="accAggr20" style="color:var(--success); font-weight:bold;">-</td>
-                    <td id="accAggr100">-</td>
-                </tr>
+                <tr><td>🛡️ 保守</td><td id="nextCons" class="pred-box">-</td><td id="accCons20" style="color:var(--success)">-</td><td id="accCons100">-</td></tr>
+                <tr><td>🔥 高頻</td><td id="nextAggr" class="pred-box">-</td><td id="accAggr20" style="color:var(--success)">-</td><td id="accAggr100">-</td></tr>
             </table>
         </div>
-
         <div class="card">
-            <h3>📈 核心邏輯引擎 (優先級修正)</h3>
+            <h3>📈 核心邏輯引擎</h3>
             <div id="roadAdvice" class="road-msg">等待數據...</div>
-            
             <div class="analysis-footer">
-                <span class="dot-label">🛡️ 保守走勢 (左新)</span>
-                <div id="dotsCons" class="dot-container"></div>
-                <span class="dot-label">🔥 高頻走勢 (左新)</span>
-                <div id="dotsAggr" class="dot-container"></div>
+                <span class="dot-label">🛡️ 保守走勢 (左新)</span><div id="dotsCons" class="dot-container"></div>
+                <span class="dot-label">🔥 高頻走勢 (左新)</span><div id="dotsAggr" class="dot-container"></div>
             </div>
         </div>
     </div>
 
     <div class="card"><div id="chart" style="height:230px;"></div></div>
-    <div class="card"><h3>歷史記錄 (近 30 局)</h3><div id="historyList"></div></div>
+    <div class="card"><h3>歷史記錄</h3><div id="historyList"></div></div>
 </div>
 
 <script>
@@ -132,7 +108,6 @@ const app = {
         const rounds = this.data.rounds; const total = rounds.length;
         const gap = this.data.lastSpecial === null ? total : total - 1 - this.data.lastSpecial;
         let weight = 1.0; weight += Math.exp(-Math.pow(gap - 8, 2) / 10); if(gap > 15) weight += (gap-15)*0.1;
-        
         let patternBonus = 1.0; let patternDesc = "";
         if(total >= 3) {
             const all9 = rounds.slice(-3).flatMap(r => r.dice);
@@ -145,13 +120,10 @@ const app = {
         this.data.probs.push(finalProb.toFixed(2));
         const el = document.getElementById("specialProb");
         el.innerText = finalProb.toFixed(2) + "%";
-        
-        // 全時變色監控
         el.className = "prob";
         if (finalProb >= 15) el.classList.add("level-ultra");
         else if (finalProb >= 12) el.classList.add("level-hot");
         else if (finalProb >= 8) el.classList.add("level-warn");
-
         document.getElementById("patternStatus").innerText = patternDesc;
         document.getElementById("gapInfo").innerText = `間隔：${gap} | 歷史：${[...this.data.intervals].reverse().slice(0,5).join(",")}`;
     },
@@ -161,57 +133,65 @@ const app = {
         const sizes = rounds.map(r => r.size); const last = sizes[total-1];
         this.data.predsCons.push(last);
         
-        let nextAggr = last; let msg = "規律分析中...";
+        let nextAggr = last; let msg = "分析中...";
         const s = sizes.slice(-12).join("");
         let streak = 0; for(let i=total-1; i>=0; i--) { if(sizes[i] === last) streak++; else break; }
 
-        // 規律特徵判定
+        // --- v5.5 特規精度判定器 ---
+        const isSpec_12_Extended = s.endsWith("大小小大小小") || s.endsWith("小大大小大大"); // 解決小小大大小小 -> 大
+        const isSpec_12_Restart = s.endsWith("大小大大小") || s.endsWith("小大小小大");    // 解決大小大大小 -> 大
         const is13Pattern = (s.endsWith("大小小小") || s.endsWith("小大大大"));
         const is13Growing = ((s.endsWith("大小小") && sizes[total-4] === "大") || (s.endsWith("小大大") && sizes[total-4] === "小"));
-        const is12Full = (s.endsWith("大小小") || s.endsWith("小大大"));
-        const is12Growing = ((s.endsWith("大小") && sizes[total-3] === "大") || (s.endsWith("小大") && sizes[total-3] === "小"));
 
-        // --- 核心優先級引擎 (長龍 > 1-3 > 1-2 > 雙跳) ---
-
-        // 1. 長龍 (只有在非一跳三完成時優先)
-        if(streak >= 3 && !is13Pattern) {
-            msg = `【長龍】${last} 已連 ${streak} 局，下注建議：${last}`;
+        // 1. 長龍優先級 (防撞：若為明顯規律循環點，則不強制判龍)
+        if(streak >= 3 && !is13Pattern && !isSpec_12_Extended) {
+            msg = `【長龍】${last} 已連 ${streak} 局，建議：${last}`;
             nextAggr = (streak >= 6) ? (last === "大" ? "小" : "大") : last;
         }
-        // 2. 一跳三 (1-3)
+        // 2. 特規精度修正 A：解決「1-2循環連續點」
+        else if (isSpec_12_Extended) {
+            nextAggr = s.endsWith("小") ? "大" : "小";
+            msg = `【1-2循環鎖定】規律重啟點，建議下注：${nextAggr}`;
+        }
+        // 3. 特規精度修正 B：解決「1-2趨勢重啟」
+        else if (isSpec_12_Restart) {
+            nextAggr = s.endsWith("小") ? "大" : "小";
+            msg = `【1-2趨勢重啟】循環點，建議下注：${nextAggr}`;
+        }
+        // 4. 一跳三 (1-3)
         else if (is13Pattern) {
             nextAggr = s.endsWith("小") ? "大" : "小";
-            msg = `【一跳三】循環達成，下注建議：${nextAggr}`;
+            msg = `【一跳三】循環達成，建議跳向：${nextAggr}`;
         }
         else if (is13Growing) {
             nextAggr = s.endsWith("小") ? "小" : "大";
-            msg = `【一跳三趨勢】補位第3顆，下注建議：${nextAggr}`;
+            msg = `【一跳三趨勢】補位第3顆，建議下注：${nextAggr}`;
         }
-        // 3. 一跳二 (1-2)
-        else if (is12Full) {
+        // 5. 一跳二 (1-2)
+        else if (s.endsWith("大小小") || s.endsWith("小大大")) {
             nextAggr = s.endsWith("小") ? "大" : "小";
-            msg = `【一跳二】循環結束，下注建議：${nextAggr}`;
+            msg = `【一跳二】規律結束點，建議下注：${nextAggr}`;
         }
-        else if (is12Growing) {
+        else if ((s.endsWith("大小") && sizes[total-3] === "大") || (s.endsWith("小大") && sizes[total-3] === "小")) {
             nextAggr = s.endsWith("小") ? "小" : "大";
-            msg = `【一跳二趨勢】補位第2顆，下注建議：${nextAggr}`;
+            msg = `【一跳二趨勢】補第2顆，建議下注：${nextAggr}`;
         }
-        // 4. 雙跳 (2-2)
+        // 6. 雙跳 (2-2)
         else if (s.endsWith("大大小小") || s.endsWith("小小大大")) {
             nextAggr = s.endsWith("小") ? "大" : "小";
-            msg = `【雙跳】換向循環，下注建議：${nextAggr}`;
+            msg = `【雙跳】換向循環，建議下注：${nextAggr}`;
         }
         else if (s.endsWith("大大小") || s.endsWith("小小大")) {
             nextAggr = s.endsWith("小") ? "小" : "大";
-            msg = `【雙跳趨勢】補位對子，下注建議：${nextAggr}`;
+            msg = `【雙跳趨勢】補位對子，建議下注：${nextAggr}`;
         }
-        // 5. 單跳
+        // 7. 單跳
         else if (s.endsWith("大小大小") || s.endsWith("小大小大")) {
             nextAggr = (last === "大" ? "小" : "大");
-            msg = `【單跳】持續中，下注建議：${nextAggr}`;
+            msg = `【單跳】持續交替中，建議下注：${nextAggr}`;
         }
         else {
-            msg = `常規隨行，下注建議：${last}`;
+            msg = `常規隨行，建議下注：${last}`;
             nextAggr = last;
         }
 
@@ -224,7 +204,6 @@ const app = {
         const cP = this.data.predsCons[total-1]; const aP = this.data.predsAggr[total-1];
         document.getElementById("nextCons").innerText = cP; document.getElementById("nextCons").className = `pred-box ${cP === '大' ? 'big' : 'small'}`;
         document.getElementById("nextAggr").innerText = aP; document.getElementById("nextAggr").className = `pred-box ${aP === '大' ? 'big' : 'small'}`;
-        
         const renderData = (acc20, acc100, dotId, predArr) => {
             let win20 = 0, count20 = 0, win100 = 0, count100 = 0, dotsHtml = "";
             for(let i = 1; i < total; i++) {
@@ -249,5 +228,3 @@ app.init();
 </script>
 </body>
 </html>
-
-
