@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>九骰旗艦系統 v6.2 全功能回歸版</title>
+    <title>九骰旗艦系統 v6.3 視覺全強化版</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <style>
         :root {
@@ -14,7 +14,7 @@
         body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 10px; }
         .container { max-width: 1400px; margin: auto; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; margin-top: 12px; }
-        .card { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #334155; position: relative; }
+        .card { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #334155; }
         .dice-btn { width: 42px; height: 42px; font-size: 18px; margin: 2px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; cursor: pointer; }
         
         .prob { font-size: 38px; font-weight: 800; font-family: 'Courier New'; margin: 2px 0; color: white; }
@@ -25,7 +25,11 @@
         .ratio-bar { flex-grow: 1; height: 12px; background: var(--primary); border-radius: 6px; overflow: hidden; display: flex; flex-direction: row-reverse; }
         .ratio-fill { height: 100%; background: var(--danger); transition: 0.5s; }
 
-        .stake-adv { font-size: 18px; font-weight: bold; color: var(--warning); border: 2px solid var(--warning); display: inline-block; padding: 5px 15px; border-radius: 20px; margin-top: 5px; }
+        .stake-adv { font-size: 18px; font-weight: bold; padding: 5px 15px; border-radius: 20px; margin-top: 5px; display: inline-block; border: 2px solid transparent; }
+        .stake-wait { color: #94a3b8; border-color: #475569; }
+        .stake-low { color: var(--success); border-color: var(--success); }
+        .stake-mid { color: var(--warning); border-color: var(--warning); }
+        .stake-high { color: var(--ultra); border-color: var(--ultra); animation: blink 0.8s infinite alternate; }
         
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 8px; text-align: center; border-bottom: 1px solid #334155; font-size: 13px; }
@@ -41,13 +45,19 @@
         .dot.lose { background: var(--danger); }
         
         .road-msg { background: #020617; padding: 12px; border-radius: 8px; color: #10b981; font-family: monospace; font-size: 14px; min-height: 40px; border-left: 4px solid var(--success); }
-        .history-tag { display: inline-block; background: #334155; padding: 2px 6px; border-radius: 4px; margin: 2px; font-size: 11px; }
+        
+        /* 歷史紀錄標籤顏色 */
+        .history-tag { display: inline-block; background: #334155; padding: 4px 8px; border-radius: 6px; margin: 3px; font-size: 13px; font-family: monospace; }
+        .tag-big { border-left: 4px solid var(--danger); }
+        .tag-small { border-left: 4px solid var(--primary); }
+        .text-big { color: var(--danger); font-weight: bold; }
+        .text-small { color: var(--primary); font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header><h2>🎲 九骰旗艦 v6.2 <span style="font-size: 12px; color:var(--warning)">● 全功能完整回歸版</span></h2></header>
+    <header><h2>🎲 九骰旗艦 v6.3 <span style="font-size: 12px; color:var(--success)">● 視覺全回歸優化版</span></h2></header>
 
     <div class="card">
         <div id="diceButtons"></div>
@@ -97,8 +107,8 @@
                 </tr>
             </table>
             <div style="margin-top:10px; text-align: center;">
-                <div id="confStars" style="color:var(--warning); margin-bottom:5px;"></div>
-                <div id="stakeAdv" class="stake-adv">等待數據</div>
+                <div id="confStars" style="color:var(--warning); margin-bottom:5px; height: 18px;"></div>
+                <div id="stakeAdv" class="stake-adv stake-wait">等待數據</div>
             </div>
         </div>
 
@@ -201,11 +211,12 @@ const app = {
         document.getElementById("confStars").innerText = "⭐".repeat(stars);
 
         const lastWin = this.data.predsAggr.length > 1 ? (this.data.predsAggr[total-2] === rounds[total-1].size) : false;
-        let stake = "觀望";
-        if (stars >= 4 && lastWin) stake = "🔥 中注跟進";
-        else if (stars === 5 && lastWin) stake = "💰 重注鎖定";
-        else if (stars <= 2) stake = "🛡️ 休息一局";
-        document.getElementById("stakeAdv").innerText = stake;
+        const stakeEl = document.getElementById("stakeAdv");
+        stakeEl.className = "stake-adv"; 
+        if (stars === 5 && lastWin) { stakeEl.innerText = "💰 重注鎖定"; stakeEl.classList.add("stake-high"); }
+        else if (stars >= 4 && lastWin) { stakeEl.innerText = "🔥 中注跟進"; stakeEl.classList.add("stake-mid"); }
+        else if (stars >= 3) { stakeEl.innerText = "🛡️ 輕注觀望"; stakeEl.classList.add("stake-low"); }
+        else { stakeEl.innerText = "💤 休息一局"; stakeEl.classList.add("stake-wait"); }
     },
 
     refreshUI() {
@@ -228,14 +239,21 @@ const app = {
         };
         renderData("accCons20", "accCons100", "dotsCons", this.data.predsCons);
         renderData("accAggr20", "accAggr100", "dotsAggr", this.data.predsAggr);
-        document.getElementById("historyList").innerHTML = rounds.slice(-30).reverse().map(r => `<span class="history-tag">${r.dice.join("")} <b>${r.size}</b></span>`).join("");
+        
+        // 歷史紀錄顏色回歸修正
+        document.getElementById("historyList").innerHTML = rounds.slice(-30).reverse().map(r => {
+            const sizeClass = r.size === '大' ? 'tag-big' : 'tag-small';
+            const textClass = r.size === '大' ? 'text-big' : 'text-small';
+            return `<span class="history-tag ${sizeClass}">${r.dice.join("")} <b class="${textClass}">${r.size}</b> ${r.isSpec ? '⭐' : ''}</span>`;
+        }).join("");
+        
         this.updateChart();
     },
     updateChart() {
         this.chart.setOption({
             tooltip: { trigger: 'axis' },
-            xAxis: { type: 'category', data: this.data.probs.map((_, i) => i + 1), name: '局數' },
-            yAxis: { type: 'value', max: 20, name: '機率%' },
+            xAxis: { type: 'category', data: this.data.probs.map((_, i) => i + 1), name: '局' },
+            yAxis: { type: 'value', max: 20 },
             series: [{ data: this.data.probs, type: 'line', smooth: true, color: '#3b82f6', areaStyle: { opacity: 0.1 } }]
         });
     },
