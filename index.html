@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>九骰旗艦系統 v6.0 終極戰術版</title>
+    <title>九骰旗艦系統 v6.2 全功能回歸版</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <style>
         :root {
@@ -13,51 +13,47 @@
         }
         body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 10px; }
         .container { max-width: 1400px; margin: auto; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; margin-top: 12px; }
         .card { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #334155; position: relative; }
-        .dice-btn { width: 42px; height: 42px; font-size: 18px; margin: 2px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; cursor: pointer; transition: 0.2s; }
-        .dice-btn:hover { background: var(--primary); }
+        .dice-btn { width: 42px; height: 42px; font-size: 18px; margin: 2px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; cursor: pointer; }
         
-        /* 數值顯示 */
         .prob { font-size: 38px; font-weight: 800; font-family: 'Courier New'; margin: 2px 0; color: white; }
-        .level-warn { color: var(--warning); }
-        .level-hot { color: var(--hot); }
         .level-ultra { color: var(--ultra); animation: blink 0.5s infinite alternate; }
         @keyframes blink { from { opacity: 1; } to { opacity: 0.4; } }
 
-        /* 比例計數器 */
-        .ratio-box { display: flex; align-items: center; gap: 10px; margin-top: 5px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; }
-        .ratio-bar { flex-grow: 1; height: 10px; background: var(--primary); border-radius: 5px; overflow: hidden; display: flex; }
+        .ratio-box { display: flex; align-items: center; gap: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; }
+        .ratio-bar { flex-grow: 1; height: 12px; background: var(--primary); border-radius: 6px; overflow: hidden; display: flex; flex-direction: row-reverse; }
         .ratio-fill { height: 100%; background: var(--danger); transition: 0.5s; }
 
-        /* 注碼建議 */
-        .stake-adv { font-size: 20px; font-weight: bold; color: var(--warning); border: 2px solid var(--warning); display: inline-block; padding: 5px 15px; border-radius: 20px; margin-top: 5px; }
-        .confidence { color: var(--warning); font-size: 14px; margin-bottom: 5px; }
-
+        .stake-adv { font-size: 18px; font-weight: bold; color: var(--warning); border: 2px solid var(--warning); display: inline-block; padding: 5px 15px; border-radius: 20px; margin-top: 5px; }
+        
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 8px; text-align: center; border-bottom: 1px solid #334155; font-size: 13px; }
         .pred-box { font-size: 22px; font-weight: bold; border-radius: 4px; padding: 4px 8px; }
         .big { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
         .small { color: var(--primary); background: rgba(59, 130, 246, 0.1); }
 
-        .dot-container { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+        .dot-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+        .dot-label { font-size: 12px; color: #94a3b8; width: 50px; flex-shrink: 0; }
+        .dot-container { display: flex; flex-wrap: wrap; gap: 3px; }
         .dot { width: 10px; height: 10px; border-radius: 50%; }
         .dot.win { background: var(--success); box-shadow: 0 0 5px var(--success); }
         .dot.lose { background: var(--danger); }
         
-        .road-msg { background: #020617; padding: 12px; border-radius: 8px; color: #10b981; font-family: monospace; font-size: 14px; min-height: 45px; border-left: 4px solid var(--success); }
+        .road-msg { background: #020617; padding: 12px; border-radius: 8px; color: #10b981; font-family: monospace; font-size: 14px; min-height: 40px; border-left: 4px solid var(--success); }
         .history-tag { display: inline-block; background: #334155; padding: 2px 6px; border-radius: 4px; margin: 2px; font-size: 11px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header><h2>🎲 九骰旗艦 v6.0 <span style="font-size: 12px; color:var(--primary)">● 戰術策略整合版</span></h2></header>
+    <header><h2>🎲 九骰旗艦 v6.2 <span style="font-size: 12px; color:var(--warning)">● 全功能完整回歸版</span></h2></header>
 
     <div class="card">
         <div id="diceButtons"></div>
-        <div style="margin-top:8px;">選取：<span id="selectedDice" style="color:var(--warning); font-weight:bold;">-</span> 
-            <button onclick="app.submitRound()" style="background:var(--success); color:white; border:none; padding:8px 20px; border-radius:6px; cursor:pointer; font-weight:bold; margin-left:15px;">確認送出</button>
+        <div style="margin-top:8px;">
+            選取：<span id="selectedDice" style="color:var(--warning); font-weight:bold;">-</span> 
+            <button onclick="app.submitRound()" style="background:var(--success); color:white; border:none; padding:8px 25px; border-radius:6px; cursor:pointer; font-weight:bold; margin-left:15px;">確認送出</button>
             <button onclick="app.deleteLast()" style="background:#475569; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; margin-left:8px;">撤銷</button>
         </div>
     </div>
@@ -68,44 +64,60 @@
             <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                 <div>
                     <div id="specialProb" class="prob">0.00%</div>
-                    <div id="patternStatus" style="color:var(--warning); font-size:12px; font-weight:bold;"></div>
+                    <div id="patternStatus" style="color:var(--warning); font-size:12px; font-weight:bold;">系統就緒</div>
                 </div>
-                <div style="text-align: right; width: 50%;">
-                    <div style="font-size: 12px; color:#94a3b8;">大小比 (近50局)</div>
+                <div style="text-align: right; width: 55%;">
+                    <div style="font-size: 11px; color:#94a3b8;">大小佔比 (近50局)</div>
                     <div class="ratio-box">
-                        <span style="font-size:10px; color:var(--primary);">小</span>
+                        <span style="font-size:12px; color:var(--primary); font-weight:bold;">小</span>
                         <div class="ratio-bar"><div id="ratioFill" class="ratio-fill" style="width: 50%;"></div></div>
-                        <span style="font-size:10px; color:var(--danger);">大</span>
+                        <span style="font-size:12px; color:var(--danger); font-weight:bold;">大</span>
                     </div>
-                    <div id="ratioText" style="font-size:12px; color:white; font-weight:bold; margin-top:3px;">50% : 50%</div>
+                    <div id="ratioText" style="font-size:12px; color:white; font-weight:bold; margin-top:5px;">50% : 50%</div>
                 </div>
             </div>
             <p id="gapInfo" style="font-size:12px; color:#94a3b8; margin-top:8px;"></p>
         </div>
 
         <div class="card">
-            <h3>📊 策略預測</h3>
+            <h3>📊 雙模勝率統計</h3>
             <table>
-                <tr><th>模式</th><th>下一局</th><th>20局勝率</th></tr>
-                <tr><td>🛡️ 保守</td><td id="nextCons" class="pred-box">-</td><td id="accCons20">-</td></tr>
-                <tr><td>🔥 高頻</td><td id="nextAggr" class="pred-box">-</td><td id="accAggr20">-</td></tr>
+                <tr><th>模式</th><th>下一局</th><th>20局</th><th>100局</th></tr>
+                <tr>
+                    <td>🛡️ 保守</td>
+                    <td id="nextCons" class="pred-box">-</td>
+                    <td id="accCons20" style="color:var(--success)">-</td>
+                    <td id="accCons100">-</td>
+                </tr>
+                <tr>
+                    <td>🔥 高頻</td>
+                    <td id="nextAggr" class="pred-box">-</td>
+                    <td id="accAggr20" style="color:var(--success)">-</td>
+                    <td id="accAggr100">-</td>
+                </tr>
             </table>
             <div style="margin-top:10px; text-align: center;">
-                <div id="confStars" class="confidence">⭐⭐⭐⭐⭐</div>
+                <div id="confStars" style="color:var(--warning); margin-bottom:5px;"></div>
                 <div id="stakeAdv" class="stake-adv">等待數據</div>
             </div>
         </div>
 
         <div class="card">
-            <h3>📈 邏輯引擎</h3>
-            <div id="roadAdvice" class="road-msg">請輸入前幾局數據...</div>
-            <div id="dotsAggr" class="dot-container"></div>
-            <div id="dotsCons" class="dot-container"></div>
+            <h3>📈 規律與燈號</h3>
+            <div id="roadAdvice" class="road-msg">請輸入數據...</div>
+            <div class="dot-row">
+                <span class="dot-label">🛡️ 保守</span>
+                <div id="dotsCons" class="dot-container"></div>
+            </div>
+            <div class="dot-row">
+                <span class="dot-label">🔥 高頻</span>
+                <div id="dotsAggr" class="dot-container"></div>
+            </div>
         </div>
     </div>
 
     <div class="card"><div id="chart" style="height:200px;"></div></div>
-    <div class="card"><div id="historyList"></div></div>
+    <div class="card"><h3>歷史記錄 (近 30 局)</h3><div id="historyList"></div></div>
 </div>
 
 <script>
@@ -142,81 +154,58 @@ const app = {
             const all9 = rounds.slice(-3).flatMap(r => r.dice);
             const counts = {}; all9.forEach(n => counts[n] = (counts[n] || 0) + 1);
             const freq = Object.values(counts).sort((a,b)=>b-a);
-            if(freq[0]>=4 && freq[1]>=4) { patternBonus = 2.5; patternDesc = "🔥 極致對碰特徵"; }
-            else if(freq[0]>=3 && freq[1]>=3) { patternBonus = 1.8; patternDesc = "⭐ 號碼密集升溫"; }
+            if(freq[0]>=4 && freq[1]>=4) { patternBonus = 2.5; patternDesc = "🔥 極致特徵"; }
+            else if(freq[0]>=3 && freq[1]>=3) { patternBonus = 1.8; patternDesc = "⭐ 密集升溫"; }
         }
         const finalProb = Math.min(4.17 * weight * patternBonus, 20.0);
         this.data.probs.push(finalProb.toFixed(2));
         const el = document.getElementById("specialProb");
         el.innerText = finalProb.toFixed(2) + "%";
-        el.className = "prob";
-        if (finalProb >= 15) el.classList.add("level-ultra");
-        else if (finalProb >= 12) el.classList.add("level-hot");
-        else if (finalProb >= 8) el.classList.add("level-warn");
-        document.getElementById("patternStatus").innerText = patternDesc;
+        el.className = "prob" + (finalProb >= 15 ? " level-ultra" : "");
+        document.getElementById("patternStatus").innerText = patternDesc || "規律掃描中";
         document.getElementById("gapInfo").innerText = `間隔：${gap} | 歷史：${[...this.data.intervals].reverse().slice(0,3).join(",")}`;
 
-        // 大小比例計算
         const last50 = rounds.slice(-50);
         const bigCount = last50.filter(r => r.size === "大").length;
-        const bigRate = total === 0 ? 50 : Math.round((bigCount / last50.length) * 100);
+        const bigRate = last50.length === 0 ? 50 : Math.round((bigCount / last50.length) * 100);
         document.getElementById("ratioFill").style.width = bigRate + "%";
-        document.getElementById("ratioText").innerText = `${100-bigRate}% : ${bigRate}%`;
+        document.getElementById("ratioText").innerText = `${100-bigRate}% (小) : ${bigRate}% (大)`;
     },
 
     analyzePatterns() {
         const rounds = this.data.rounds; const total = rounds.length; if(total === 0) return;
         const sizes = rounds.map(r => r.size); const last = sizes[total-1];
         this.data.predsCons.push(last);
-        
-        let nextAggr = last; let msg = "規律掃描中..."; let stars = 2;
+        let nextAggr = last; let msg = "分析中..."; let stars = 2;
         const s = sizes.slice(-12).join("");
         let streak = 0; for(let i=total-1; i>=0; i--) { if(sizes[i] === last) streak++; else break; }
 
-        // --- v6.0 精確引擎 ---
         const isSpec_12_Extended = s.endsWith("大小小大小小") || s.endsWith("小大大小大大");
         const isSpec_12_Restart = s.endsWith("大小大大小") || s.endsWith("小大小小大");
         const is13Pattern = (s.endsWith("大小小小") || s.endsWith("小大大大"));
-        const is13Growing = ((s.endsWith("大小小") && sizes[total-4] === "大") || (s.endsWith("小大大") && sizes[total-4] === "小"));
 
         if(streak >= 3 && !is13Pattern && !isSpec_12_Extended) {
-            msg = `【長龍】${last} 連續中`; nextAggr = (streak >= 6) ? (last === "大" ? "小" : "大") : last; stars = 4;
-        }
-        else if (isSpec_12_Extended || isSpec_12_Restart) {
-            nextAggr = s.endsWith("小") ? "大" : "小"; msg = `【1-2規律】鎖定點`; stars = 5;
-        }
-        else if (is13Pattern) {
-            nextAggr = s.endsWith("小") ? "大" : "小"; msg = `【1-3循環】完成`; stars = 5;
-        }
-        else if (is13Growing) {
-            nextAggr = s.endsWith("小") ? "小" : "大"; msg = `【1-3趨勢】補位中`; stars = 4;
-        }
-        else if (s.endsWith("大小小") || s.endsWith("小大大")) {
-            nextAggr = s.endsWith("小") ? "大" : "小"; msg = `【1-2規律】結束點`; stars = 4;
-        }
-        else if ((s.endsWith("大小") && sizes[total-3] === "大") || (s.endsWith("小大") && sizes[total-3] === "小")) {
-            nextAggr = s.endsWith("小") ? "小" : "大"; msg = `【1-2趨勢】補位中`; stars = 3;
-        }
-        else if (s.endsWith("大大小小") || s.endsWith("小小大大")) {
-            nextAggr = s.endsWith("小") ? "大" : "小"; msg = `【雙跳】切換`; stars = 3;
-        }
-        else if (s.endsWith("大小大小") || s.endsWith("小大小大")) {
-            nextAggr = (last === "大" ? "小" : "大"); msg = `【單跳】持續中`; stars = 4;
-        }
-        else { nextAggr = last; stars = 2; }
+            msg = `【長龍】${last} 連開 ${streak}`; nextAggr = streak >= 6 ? (last === "大" ? "小" : "大") : last; stars = 4;
+        } else if (isSpec_12_Extended || isSpec_12_Restart) {
+            nextAggr = s.endsWith("小") ? "大" : "小"; msg = `【1-2規律】鎖定重啟`; stars = 5;
+        } else if (is13Pattern) {
+            nextAggr = s.endsWith("小") ? "大" : "小"; msg = `【1-3循環】達成`; stars = 5;
+        } else if (s.endsWith("大小小") || s.endsWith("小大大")) {
+            nextAggr = s.endsWith("小") ? "大" : "小"; msg = `【1-2規律】完成`; stars = 4;
+        } else if (s.endsWith("大小大小") || s.endsWith("小大小大")) {
+            nextAggr = last === "大" ? "小" : "大"; msg = `【單跳】持續中`; stars = 4;
+        } else { nextAggr = last; stars = 2; }
 
         this.data.predsAggr.push(nextAggr);
         document.getElementById("roadAdvice").innerText = msg;
         document.getElementById("confStars").innerText = "⭐".repeat(stars);
 
-        // 注碼建議邏輯
         const lastWin = this.data.predsAggr.length > 1 ? (this.data.predsAggr[total-2] === rounds[total-1].size) : false;
-        let stake = "輕注觀望";
+        let stake = "觀望";
         if (stars >= 4 && lastWin) stake = "🔥 中注跟進";
-        if (stars === 5 && lastWin) stake = "💰 重注鎖定";
-        if (stars <= 2) stake = "🛡️ 休息一局";
+        else if (stars === 5 && lastWin) stake = "💰 重注鎖定";
+        else if (stars <= 2) stake = "🛡️ 休息一局";
         document.getElementById("stakeAdv").innerText = stake;
-        document.getElementById("stakeAdv").style.borderColor = (stake.includes("重注")) ? "var(--ultra)" : "var(--warning)";
     },
 
     refreshUI() {
@@ -224,22 +213,32 @@ const app = {
         const cP = this.data.predsCons[total-1]; const aP = this.data.predsAggr[total-1];
         document.getElementById("nextCons").innerText = cP; document.getElementById("nextCons").className = `pred-box ${cP === '大' ? 'big' : 'small'}`;
         document.getElementById("nextAggr").innerText = aP; document.getElementById("nextAggr").className = `pred-box ${aP === '大' ? 'big' : 'small'}`;
-        const renderData = (acc20, dotId, predArr) => {
-            let win20 = 0, count20 = 0, dotsHtml = "";
+        
+        const renderData = (acc20Id, acc100Id, dotId, predArr) => {
+            let win20 = 0, win100 = 0, dotsHtml = "";
             for(let i = 1; i < total; i++) {
                 const isWin = (predArr[i-1] === rounds[i].size);
-                if(i >= total - 20) { if(isWin) win20++; count20++; }
+                if(i >= total - 20) { if(isWin) win20++; }
+                if(i >= total - 100) { if(isWin) win100++; }
                 if(i >= total - 20) dotsHtml = `<div class="dot ${isWin?'win':'lose'}"></div>` + dotsHtml;
             }
-            document.getElementById(acc20).innerText = count20 === 0 ? "-" : (win20/count20*100).toFixed(1) + "%";
+            document.getElementById(acc20Id).innerText = total < 2 ? "-" : (win20 / Math.min(total-1, 20) * 100).toFixed(1) + "%";
+            document.getElementById(acc100Id).innerText = total < 2 ? "-" : (win100 / Math.min(total-1, 100) * 100).toFixed(1) + "%";
             document.getElementById(dotId).innerHTML = dotsHtml;
         };
-        renderData("accCons20", "dotsCons", this.data.predsCons);
-        renderData("accAggr20", "dotsAggr", this.data.predsAggr);
-        document.getElementById("historyList").innerHTML = rounds.slice(-20).reverse().map(r => `<span class="history-tag">${r.dice.join("")} <b style="color:${r.size==='大'?'#f87171':'#38bdf8'}">${r.size}</b></span>`).join("");
+        renderData("accCons20", "accCons100", "dotsCons", this.data.predsCons);
+        renderData("accAggr20", "accAggr100", "dotsAggr", this.data.predsAggr);
+        document.getElementById("historyList").innerHTML = rounds.slice(-30).reverse().map(r => `<span class="history-tag">${r.dice.join("")} <b>${r.size}</b></span>`).join("");
         this.updateChart();
     },
-    updateChart() { this.chart.setOption({ xAxis: { data: this.data.probs.map((_,i)=>i+1) }, yAxis: { max: 20 }, series: [{ data: this.data.probs, type: 'line', smooth: true, areaStyle: { opacity: 0.1 } }] }); },
+    updateChart() {
+        this.chart.setOption({
+            tooltip: { trigger: 'axis' },
+            xAxis: { type: 'category', data: this.data.probs.map((_, i) => i + 1), name: '局數' },
+            yAxis: { type: 'value', max: 20, name: '機率%' },
+            series: [{ data: this.data.probs, type: 'line', smooth: true, color: '#3b82f6', areaStyle: { opacity: 0.1 } }]
+        });
+    },
     deleteLast() { if(this.data.rounds.length === 0) return; this.data.rounds.pop(); this.data.probs.pop(); this.data.predsCons.pop(); this.data.predsAggr.pop(); this.calculate(); }
 };
 app.init();
