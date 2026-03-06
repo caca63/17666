@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>九骰旗艦系統 v6.3 視覺全強化版</title>
+    <title>九骰旗艦系統 v6.4 趨勢進化版</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <style>
         :root {
@@ -38,26 +38,22 @@
         .small { color: var(--primary); background: rgba(59, 130, 246, 0.1); }
 
         .dot-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
-        .dot-label { font-size: 12px; color: #94a3b8; width: 50px; flex-shrink: 0; }
+        .dot-label { font-size: 12px; color: #94a3b8; width: 60px; flex-shrink: 0; }
         .dot-container { display: flex; flex-wrap: wrap; gap: 3px; }
         .dot { width: 10px; height: 10px; border-radius: 50%; }
         .dot.win { background: var(--success); box-shadow: 0 0 5px var(--success); }
         .dot.lose { background: var(--danger); }
         
         .road-msg { background: #020617; padding: 12px; border-radius: 8px; color: #10b981; font-family: monospace; font-size: 14px; min-height: 40px; border-left: 4px solid var(--success); }
-        
-        /* 歷史紀錄標籤顏色 */
-        .history-tag { display: inline-block; background: #334155; padding: 4px 8px; border-radius: 6px; margin: 3px; font-size: 13px; font-family: monospace; }
-        .tag-big { border-left: 4px solid var(--danger); }
-        .tag-small { border-left: 4px solid var(--primary); }
-        .text-big { color: var(--danger); font-weight: bold; }
-        .text-small { color: var(--primary); font-weight: bold; }
+        .history-tag { display: inline-block; background: #334155; padding: 4px 8px; border-radius: 6px; margin: 3px; font-size: 13px; font-family: monospace; border-left: 4px solid transparent; }
+        .tag-big { border-left-color: var(--danger); }
+        .tag-small { border-left-color: var(--primary); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header><h2>🎲 九骰旗艦 v6.3 <span style="font-size: 12px; color:var(--success)">● 視覺全回歸優化版</span></h2></header>
+    <header><h2>🎲 九骰旗艦 v6.4 <span style="font-size: 12px; color:var(--primary)">● 大盤趨勢進化版</span></h2></header>
 
     <div class="card">
         <div id="diceButtons"></div>
@@ -74,7 +70,7 @@
             <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                 <div>
                     <div id="specialProb" class="prob">0.00%</div>
-                    <div id="patternStatus" style="color:var(--warning); font-size:12px; font-weight:bold;">系統就緒</div>
+                    <div id="patternStatus" style="color:var(--warning); font-size:12px; font-weight:bold;">趨勢掃描中</div>
                 </div>
                 <div style="text-align: right; width: 55%;">
                     <div style="font-size: 11px; color:#94a3b8;">大小佔比 (近50局)</div>
@@ -90,17 +86,17 @@
         </div>
 
         <div class="card">
-            <h3>📊 雙模勝率統計</h3>
+            <h3>📊 戰術預測</h3>
             <table>
                 <tr><th>模式</th><th>下一局</th><th>20局</th><th>100局</th></tr>
                 <tr>
-                    <td>🛡️ 保守</td>
-                    <td id="nextCons" class="pred-box">-</td>
-                    <td id="accCons20" style="color:var(--success)">-</td>
-                    <td id="accCons100">-</td>
+                    <td>🌐 趨勢</td>
+                    <td id="nextTrend" class="pred-box">-</td>
+                    <td id="accTrend20" style="color:var(--success)">-</td>
+                    <td id="accTrend100">-</td>
                 </tr>
                 <tr>
-                    <td>🔥 高頻</td>
+                    <td>🔥 規律</td>
                     <td id="nextAggr" class="pred-box">-</td>
                     <td id="accAggr20" style="color:var(--success)">-</td>
                     <td id="accAggr100">-</td>
@@ -114,25 +110,25 @@
 
         <div class="card">
             <h3>📈 規律與燈號</h3>
-            <div id="roadAdvice" class="road-msg">請輸入數據...</div>
+            <div id="roadAdvice" class="road-msg">數據不足...</div>
             <div class="dot-row">
-                <span class="dot-label">🛡️ 保守</span>
-                <div id="dotsCons" class="dot-container"></div>
+                <span class="dot-label">🌐 趨勢</span>
+                <div id="dotsTrend" class="dot-container"></div>
             </div>
             <div class="dot-row">
-                <span class="dot-label">🔥 高頻</span>
+                <span class="dot-label">🔥 規律</span>
                 <div id="dotsAggr" class="dot-container"></div>
             </div>
         </div>
     </div>
 
-    <div class="card"><div id="chart" style="height:200px;"></div></div>
-    <div class="card"><h3>歷史記錄 (近 30 局)</h3><div id="historyList"></div></div>
+    <div class="card"><div id="chart" style="height:180px;"></div></div>
+    <div class="card"><div id="historyList"></div></div>
 </div>
 
 <script>
 const app = {
-    data: { rounds: [], selected: [], probs: [], predsCons: [], predsAggr: [], intervals: [], lastSpecial: null },
+    data: { rounds: [], selected: [], probs: [], predsTrend: [], predsAggr: [], intervals: [], lastSpecial: null },
     init() { this.renderBtns(); this.chart = echarts.init(document.getElementById('chart')); this.updateChart(); },
     renderBtns() {
         const c = document.getElementById("diceButtons");
@@ -153,7 +149,7 @@ const app = {
         }
         this.data.selected = []; document.getElementById("selectedDice").innerText = "-"; this.calculate();
     },
-    calculate() { this.calcSpecialProb(); this.analyzePatterns(); this.refreshUI(); },
+    calculate() { this.calcSpecialProb(); this.analyzeTrend(); this.analyzeAggr(); this.refreshUI(); },
 
     calcSpecialProb() {
         const rounds = this.data.rounds; const total = rounds.length;
@@ -182,10 +178,22 @@ const app = {
         document.getElementById("ratioText").innerText = `${100-bigRate}% (小) : ${bigRate}% (大)`;
     },
 
-    analyzePatterns() {
+    analyzeTrend() {
         const rounds = this.data.rounds; const total = rounds.length; if(total === 0) return;
         const sizes = rounds.map(r => r.size); const last = sizes[total-1];
-        this.data.predsCons.push(last);
+        const last20 = sizes.slice(-20);
+        const bigRate = last20.filter(s => s === "大").length / last20.length;
+        
+        let pred = last;
+        if (bigRate >= 0.65) pred = "小"; // 偏大太多，趨勢回歸
+        else if (bigRate <= 0.35) pred = "大"; // 偏小太多，趨勢回歸
+        else pred = last; // 正常範圍內隨行
+        this.data.predsTrend.push(pred);
+    },
+
+    analyzeAggr() {
+        const rounds = this.data.rounds; const total = rounds.length; if(total === 0) return;
+        const sizes = rounds.map(r => r.size); const last = sizes[total-1];
         let nextAggr = last; let msg = "分析中..."; let stars = 2;
         const s = sizes.slice(-12).join("");
         let streak = 0; for(let i=total-1; i>=0; i--) { if(sizes[i] === last) streak++; else break; }
@@ -195,15 +203,15 @@ const app = {
         const is13Pattern = (s.endsWith("大小小小") || s.endsWith("小大大大"));
 
         if(streak >= 3 && !is13Pattern && !isSpec_12_Extended) {
-            msg = `【長龍】${last} 連開 ${streak}`; nextAggr = streak >= 6 ? (last === "大" ? "小" : "大") : last; stars = 4;
+            msg = `【長龍】${last} 連續`; nextAggr = (streak >= 6) ? (last === "大" ? "小" : "大") : last; stars = 4;
         } else if (isSpec_12_Extended || isSpec_12_Restart) {
-            nextAggr = s.endsWith("小") ? "大" : "小"; msg = `【1-2規律】鎖定重啟`; stars = 5;
+            nextAggr = s.endsWith("小") ? "大" : "小"; msg = `【1-2規律】鎖定點`; stars = 5;
         } else if (is13Pattern) {
             nextAggr = s.endsWith("小") ? "大" : "小"; msg = `【1-3循環】達成`; stars = 5;
         } else if (s.endsWith("大小小") || s.endsWith("小大大")) {
-            nextAggr = s.endsWith("小") ? "大" : "小"; msg = `【1-2規律】完成`; stars = 4;
+            nextAggr = s.endsWith("小") ? "大" : "小"; msg = `【1-2】結束換向`; stars = 4;
         } else if (s.endsWith("大小大小") || s.endsWith("小大小大")) {
-            nextAggr = last === "大" ? "小" : "大"; msg = `【單跳】持續中`; stars = 4;
+            nextAggr = (last === "大" ? "小" : "大"); msg = `【單跳】持續中`; stars = 4;
         } else { nextAggr = last; stars = 2; }
 
         this.data.predsAggr.push(nextAggr);
@@ -213,16 +221,16 @@ const app = {
         const lastWin = this.data.predsAggr.length > 1 ? (this.data.predsAggr[total-2] === rounds[total-1].size) : false;
         const stakeEl = document.getElementById("stakeAdv");
         stakeEl.className = "stake-adv"; 
-        if (stars === 5 && lastWin) { stakeEl.innerText = "💰 重注鎖定"; stakeEl.classList.add("stake-high"); }
-        else if (stars >= 4 && lastWin) { stakeEl.innerText = "🔥 中注跟進"; stakeEl.classList.add("stake-mid"); }
-        else if (stars >= 3) { stakeEl.innerText = "🛡️ 輕注觀望"; stakeEl.classList.add("stake-low"); }
-        else { stakeEl.innerText = "💤 休息一局"; stakeEl.classList.add("stake-wait"); }
+        if (stars === 5 && lastWin) { stakeEl.innerText = "💰 重注鎖定"; stakeEl.className += " stake-high"; }
+        else if (stars >= 4 && lastWin) { stakeEl.innerText = "🔥 中注跟進"; stakeEl.className += " stake-mid"; }
+        else if (stars >= 3) { stakeEl.innerText = "🛡️ 輕注觀望"; stakeEl.className += " stake-low"; }
+        else { stakeEl.innerText = "💤 休息一局"; stakeEl.className += " stake-wait"; }
     },
 
     refreshUI() {
         const rounds = this.data.rounds; const total = rounds.length; if(total === 0) return;
-        const cP = this.data.predsCons[total-1]; const aP = this.data.predsAggr[total-1];
-        document.getElementById("nextCons").innerText = cP; document.getElementById("nextCons").className = `pred-box ${cP === '大' ? 'big' : 'small'}`;
+        const tP = this.data.predsTrend[total-1]; const aP = this.data.predsAggr[total-1];
+        document.getElementById("nextTrend").innerText = tP; document.getElementById("nextTrend").className = `pred-box ${tP === '大' ? 'big' : 'small'}`;
         document.getElementById("nextAggr").innerText = aP; document.getElementById("nextAggr").className = `pred-box ${aP === '大' ? 'big' : 'small'}`;
         
         const renderData = (acc20Id, acc100Id, dotId, predArr) => {
@@ -237,27 +245,24 @@ const app = {
             document.getElementById(acc100Id).innerText = total < 2 ? "-" : (win100 / Math.min(total-1, 100) * 100).toFixed(1) + "%";
             document.getElementById(dotId).innerHTML = dotsHtml;
         };
-        renderData("accCons20", "accCons100", "dotsCons", this.data.predsCons);
+        renderData("accTrend20", "accTrend100", "dotsTrend", this.data.predsTrend);
         renderData("accAggr20", "accAggr100", "dotsAggr", this.data.predsAggr);
         
-        // 歷史紀錄顏色回歸修正
-        document.getElementById("historyList").innerHTML = rounds.slice(-30).reverse().map(r => {
+        document.getElementById("historyList").innerHTML = rounds.slice(-25).reverse().map(r => {
             const sizeClass = r.size === '大' ? 'tag-big' : 'tag-small';
-            const textClass = r.size === '大' ? 'text-big' : 'text-small';
-            return `<span class="history-tag ${sizeClass}">${r.dice.join("")} <b class="${textClass}">${r.size}</b> ${r.isSpec ? '⭐' : ''}</span>`;
+            const textClass = r.size === '大' ? 'text-danger' : 'text-primary';
+            return `<span class="history-tag ${sizeClass}">${r.dice.join("")} <b style="color:${r.size==='大'?'#f87171':'#38bdf8'}">${r.size}</b> ${r.isSpec ? '⭐' : ''}</span>`;
         }).join("");
-        
         this.updateChart();
     },
     updateChart() {
         this.chart.setOption({
-            tooltip: { trigger: 'axis' },
-            xAxis: { type: 'category', data: this.data.probs.map((_, i) => i + 1), name: '局' },
-            yAxis: { type: 'value', max: 20 },
-            series: [{ data: this.data.probs, type: 'line', smooth: true, color: '#3b82f6', areaStyle: { opacity: 0.1 } }]
+            xAxis: { data: this.data.probs.map((_, i) => i + 1) },
+            yAxis: { max: 20 },
+            series: [{ data: this.data.probs, type: 'line', smooth: true }]
         });
     },
-    deleteLast() { if(this.data.rounds.length === 0) return; this.data.rounds.pop(); this.data.probs.pop(); this.data.predsCons.pop(); this.data.predsAggr.pop(); this.calculate(); }
+    deleteLast() { if(this.data.rounds.length === 0) return; this.data.rounds.pop(); this.data.probs.pop(); this.data.predsTrend.pop(); this.data.predsAggr.pop(); this.calculate(); }
 };
 app.init();
 </script>
