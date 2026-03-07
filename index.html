@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>九骰旗艦系統 v6.7 - 終極調優版</title>
+    <title>九骰旗艦系統 v6.8 - 5.5算法回歸版</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <style>
         :root {
@@ -17,31 +17,24 @@
         .card { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #334155; }
         .dice-btn { width: 44px; height: 44px; font-size: 20px; margin: 3px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; cursor: pointer; }
         .prob { font-size: 42px; font-weight: 800; font-family: 'Courier New'; color: white; line-height: 1; }
-        
-        /* 比例條修正 */
         .ratio-box { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; margin-top: 5px; }
         .ratio-bar { flex-grow: 1; height: 14px; background: var(--primary); border-radius: 7px; overflow: hidden; display: flex; flex-direction: row-reverse; }
-        .ratio-fill { height: 100%; background: var(--danger); transition: 0.5s; border-left: 1px solid rgba(255,255,255,0.3); }
-
+        .ratio-fill { height: 100%; background: var(--danger); transition: 0.5s; }
         .stake-adv { font-size: 20px; font-weight: bold; padding: 8px 25px; border-radius: 20px; margin-top: 10px; display: inline-block; border: 2px solid transparent; }
         .stake-high { color: var(--ultra); border-color: var(--ultra); animation: blink 0.8s infinite alternate; }
         @keyframes blink { from { opacity: 1; text-shadow: 0 0 10px var(--ultra); } to { opacity: 0.5; } }
-        
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { padding: 10px; text-align: center; border-bottom: 1px solid #334155; font-size: 14px; }
         .pred-box { font-size: 24px; font-weight: bold; border-radius: 6px; padding: 5px 10px; }
         .big { color: var(--danger); background: rgba(239, 68, 68, 0.15); }
         .small { color: var(--primary); background: rgba(59, 130, 246, 0.15); }
-
         .history-tag { display: inline-block; background: #334155; padding: 5px 10px; border-radius: 6px; margin: 4px; font-size: 14px; border-left: 5px solid transparent; }
-        .tag-big { border-left-color: var(--danger); }
-        .tag-small { border-left-color: var(--primary); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header><h2>🎲 九骰旗艦 v6.7 <span style="font-size: 12px; color:var(--ultra)">● 算法與圖表強化版</span></h2></header>
+    <header><h2>🎲 九骰旗艦 v6.8 <span style="font-size: 12px; color:var(--warning)">● 5.5 核心回歸版</span></h2></header>
 
     <div class="card">
         <div id="diceButtons"></div>
@@ -54,14 +47,14 @@
 
     <div class="grid">
         <div class="card">
-            <h3>⚠️ 豹子監控</h3>
+            <h3>⚠️ 豹子監控 (v5.5 核心)</h3>
             <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                 <div>
                     <div id="specialProb" class="prob">0.00%</div>
-                    <div id="gapDisplay" style="color:var(--warning); font-size:14px; font-weight:bold; margin-top:5px;">未開：0局</div>
+                    <div id="gapDisplay" style="color:var(--warning); font-size:14px; font-weight:bold; margin-top:5px;">未開間隔：0局</div>
                 </div>
                 <div style="text-align: right; width: 55%;">
-                    <div id="patternStatus" style="font-size:12px; color:var(--ultra); margin-bottom:5px; font-weight:bold;">等待特徵...</div>
+                    <div id="patternStatus" style="font-size:12px; margin-bottom:5px; font-weight:bold;">監控中...</div>
                     <div class="ratio-box">
                         <span style="font-size:12px; color:var(--primary); font-weight:bold;">小</span>
                         <div class="ratio-bar"><div id="ratioFill" class="ratio-fill" style="width: 50%;"></div></div>
@@ -76,7 +69,7 @@
         <div class="card">
             <h3>📊 戰術預測</h3>
             <table>
-                <tr><th>模式</th><th>下一局</th><th>20局</th><th>100局</th></tr>
+                <tr><th>模式</th><th>下一局</th><th>20局勝率</th><th>100局勝率</th></tr>
                 <tr><td>🌐 趨勢</td><td id="nextTrend" class="pred-box">-</td><td id="accTrend20">-</td><td id="accTrend100">-</td></tr>
                 <tr><td>🔥 規律</td><td id="nextAggr" class="pred-box">-</td><td id="accAggr20">-</td><td id="accAggr100">-</td></tr>
             </table>
@@ -97,7 +90,7 @@
     </div>
 
     <div class="card">
-        <h3>🚀 豹子機率流動 (高度強化)</h3>
+        <h3>🚀 豹子機率流動 (300px 強化觀察)</h3>
         <div id="chart" style="height:300px;"></div>
     </div>
 
@@ -129,43 +122,37 @@ const app = {
     },
     calculate() { this.calcSpecialProb(); this.analyzeTrend(); this.analyzeAggr(); this.refreshUI(); },
 
-    // --- 強化版豹子監控算法 ---
+    // --- 完全回歸 v5.5 豹子算法 ---
     calcSpecialProb() {
-        const rounds = this.data.rounds; const total = rounds.length;
+        const rounds = this.data.rounds;
+        const total = rounds.length;
         const gap = this.data.lastSpecial === null ? total : total - 1 - this.data.lastSpecial;
+        let weight = 1.0;
         
-        // 基礎機率與間隔權重
-        let weight = 1.0; 
-        weight += Math.exp(-Math.pow(gap - 9, 2) / 12); // 間隔 9 局附近的吸引力
-        if(gap > 15) weight += (gap-15) * 0.15; // 超長未開加權
+        // v5.5 平滑間隔權重
+        if (gap >= 8 && gap <= 12) weight += (gap - 7) * 0.15;
+        else if (gap > 12) weight += 0.75 + (gap - 12) * 0.05;
 
-        // 核心修正：數字密集偵測
-        let patternBonus = 1.0;
-        let statusMsg = "規律穩定";
-        if(total >= 3) {
-            const last9Dice = rounds.slice(-3).flatMap(r => r.dice);
-            const counts = {}; last9Dice.forEach(n => counts[n] = (counts[n] || 0) + 1);
-            const maxFreq = Math.max(...Object.values(counts));
-            
-            if(maxFreq >= 5) { patternBonus = 3.5; statusMsg = "⚡ 極致密集：豹子臨界"; }
-            else if(maxFreq >= 4) { patternBonus = 2.5; statusMsg = "🔥 高熱數字：升溫中"; }
-            
-            // 對子偵測
-            const lastRound = rounds[total-1].dice;
-            if(lastRound[0]===lastRound[1] || lastRound[1]===lastRound[2] || lastRound[0]===lastRound[2]) {
-                patternBonus *= 1.3;
-            }
+        // v5.5 溫和數字權重 (最近 2 局)
+        if (total >= 2) {
+            const last6 = [...rounds[total-1].dice, ...rounds[total-2].dice];
+            const counts = {}; last6.forEach(n => counts[n] = (counts[n] || 0) + 1);
+            if (Math.max(...Object.values(counts)) >= 3) weight *= 1.2;
         }
 
-        const finalProb = Math.min(4.17 * weight * patternBonus, 25.0);
+        const finalProb = Math.min(4.17 * weight, 20.0);
         this.data.probs.push(finalProb.toFixed(2));
         
         // UI 更新
         document.getElementById("specialProb").innerText = finalProb.toFixed(2) + "%";
         document.getElementById("specialProb").style.color = finalProb > 15 ? "var(--ultra)" : "white";
-        document.getElementById("gapDisplay").innerText = `未開：${gap} 局`;
-        document.getElementById("patternStatus").innerText = statusMsg;
+        document.getElementById("gapDisplay").innerText = `未開間隔：${gap} 局`;
         document.getElementById("historyIntervals").innerText = "歷史間隔：" + [...this.data.intervals].reverse().slice(0,5).join(", ");
+        
+        const statusEl = document.getElementById("patternStatus");
+        if (finalProb > 15) { statusEl.innerText = "🔥 高機率區間"; statusEl.style.color = "var(--ultra)"; }
+        else if (finalProb > 10) { statusEl.innerText = "⭐ 升溫中"; statusEl.style.color = "var(--warning)"; }
+        else { statusEl.innerText = "🛡️ 穩定監控"; statusEl.style.color = "#94a3b8"; }
 
         // 比例更新
         const last50 = rounds.slice(-50);
@@ -178,49 +165,37 @@ const app = {
     analyzeTrend() {
         const rounds = this.data.rounds; const total = rounds.length; if(total === 0) return;
         const last20 = rounds.slice(-20).map(r => r.size);
-        const bigRate = last20.filter(s => s === "大").length / last20.length;
+        const bigRate = last20.filter(s => s === "大").length / (last20.length || 1);
         let pred = rounds[total-1].size;
-        if (bigRate >= 0.60) pred = "小"; 
-        else if (bigRate <= 0.40) pred = "大"; 
+        if (bigRate >= 0.60) pred = "小"; else if (bigRate <= 0.40) pred = "大"; 
         this.data.predsTrend.push(pred);
     },
 
     analyzeAggr() {
         const rounds = this.data.rounds; const total = rounds.length; if(total === 0) return;
         const sizes = rounds.map(r => r.size); const last = sizes[total-1];
-        let nextAggr = last; let msg = "掃描路單..."; let stars = 2;
+        let nextAggr = last; let msg = "掃描中..."; let stars = 2;
         const s = sizes.slice(-12).join("");
         let streak = 0; for(let i=total-1; i>=0; i--) { if(sizes[i] === last) streak++; else break; }
 
-        // --- v6.7 優先級邏輯：1-2 循環優先於長龍 ---
-        if (s.endsWith("小大大")) {
-            nextAggr = "小"; msg = "【1-2】完結：看好換向"; stars = 5;
-        } else if (s.endsWith("大小小")) {
-            nextAggr = "大"; msg = "【1-2】完結：看好換向"; stars = 5;
-        } else if (s.endsWith("小大") && sizes[total-3] === "小") {
-            nextAggr = "大"; msg = "【1-2】補位：跟隨規律"; stars = 4;
-        } else if (s.endsWith("大小") && sizes[total-3] === "大") {
-            nextAggr = "小"; msg = "【1-2】補位：跟隨規律"; stars = 4;
-        } else if (s.endsWith("大小大小") || s.endsWith("小大小大")) {
-            nextAggr = (last === "大" ? "小" : "大"); msg = "【單跳】規律持續"; stars = 4;
-        } else if (streak >= 3) {
+        // v6.6+ 修正後的 1-2 優先邏輯
+        if (s.endsWith("小大大")) { nextAggr = "小"; msg = "【1-2】完結：換向"; stars = 5; }
+        else if (s.endsWith("大小小")) { nextAggr = "大"; msg = "【1-2】完結：換向"; stars = 5; }
+        else if (s.endsWith("小大") && sizes[total-3] === "小") { nextAggr = "大"; msg = "【1-2】補位中"; stars = 4; }
+        else if (s.endsWith("大小") && sizes[total-3] === "大") { nextAggr = "小"; msg = "【1-2】補位中"; stars = 4; }
+        else if (streak >= 3) {
             nextAggr = (streak >= 6) ? (last === "大" ? "小" : "大") : last;
-            msg = (streak >= 6) ? "【長龍】斷龍警示" : `【長龍】${last}連開${streak}`; 
-            stars = (streak >= 6) ? 5 : 3;
-        } else {
-            nextAggr = last; stars = 2;
-        }
+            msg = (streak >= 6) ? "【長龍】斷龍警示" : `【長龍】${last}連開`; stars = streak >= 6 ? 5 : 3;
+        } else { nextAggr = last; stars = 2; }
 
         this.data.predsAggr.push(nextAggr);
         document.getElementById("roadAdvice").innerText = msg;
         document.getElementById("confStars").innerText = "⭐".repeat(stars);
 
-        const lastWin = this.data.predsAggr.length > 1 && this.data.predsAggr[total-2] === rounds[total-1].size;
         const stakeEl = document.getElementById("stakeAdv");
-        stakeEl.className = "stake-adv";
-        if (stars === 5) { stakeEl.innerText = "💰 重注鎖定"; stakeEl.classList.add("stake-high"); }
-        else if (stars === 4) { stakeEl.innerText = "🔥 中注跟進"; stakeEl.style.color = "var(--warning)"; }
-        else { stakeEl.innerText = "🛡️ 觀望一局"; stakeEl.style.color = "#94a3b8"; }
+        if (stars === 5) { stakeEl.innerText = "💰 重注鎖定"; stakeEl.className = "stake-adv stake-high"; }
+        else if (stars === 4) { stakeEl.innerText = "🔥 中注跟進"; stakeEl.className = "stake-adv"; stakeEl.style.color = "var(--warning)"; }
+        else { stakeEl.innerText = "🛡️ 觀望一局"; stakeEl.className = "stake-adv"; stakeEl.style.color = "#94a3b8"; }
     },
 
     refreshUI() {
@@ -244,7 +219,6 @@ const app = {
         };
         renderDots("dotsTrend", this.data.predsTrend, "Trend");
         renderDots("dotsAggr", this.data.predsAggr, "Aggr");
-
         document.getElementById("historyList").innerHTML = rounds.slice(-25).reverse().map(r => 
             `<span class="history-tag ${r.size==='大'?'tag-big':'tag-small'}">${r.dice.join("")} <b style="color:${r.size==='大'?'#f87171':'#38bdf8'}">${r.size}</b> ${r.isSpec?'⭐':''}</span>`
         ).join("");
@@ -255,15 +229,10 @@ const app = {
             tooltip: { trigger: 'axis' },
             grid: { top: 30, bottom: 30, left: 40, right: 20 },
             xAxis: { type: 'category', data: this.data.probs.map((_, i) => i + 1), axisLabel: { color: '#94a3b8' } },
-            yAxis: { 
-                type: 'value', min: 0, max: 25, 
-                splitLine: { lineStyle: { color: '#334155' } },
-                axisLabel: { formatter: '{value}%', color: '#94a3b8' }
-            },
+            yAxis: { type: 'value', min: 0, max: 20, splitLine: { lineStyle: { color: '#334155' } }, axisLabel: { color: '#94a3b8' } },
             series: [{ 
                 data: this.data.probs, type: 'line', smooth: true, color: '#ff00ea',
-                areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#ff00ea' }, { offset: 1, color: 'transparent' }]), opacity: 0.2 },
-                lineStyle: { width: 3, shadowBlur: 10, shadowColor: '#ff00ea' }
+                areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#ff00ea' }, { offset: 1, color: 'transparent' }]), opacity: 0.1 }
             }]
         });
     },
