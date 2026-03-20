@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>九骰旗艦系統 v6.8 - 5.5算法回歸版</title>
+    <title>九骰旗艦系統 v6.9 - 聰明規律修正版</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <style>
         :root {
@@ -20,7 +20,7 @@
         .ratio-box { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; margin-top: 5px; }
         .ratio-bar { flex-grow: 1; height: 14px; background: var(--primary); border-radius: 7px; overflow: hidden; display: flex; flex-direction: row-reverse; }
         .ratio-fill { height: 100%; background: var(--danger); transition: 0.5s; }
-        .stake-adv { font-size: 20px; font-weight: bold; padding: 8px 25px; border-radius: 20px; margin-top: 10px; display: inline-block; border: 2px solid transparent; }
+        .stake-adv { font-size: 20px; font-weight: bold; padding: 8px 25px; border-radius: 20px; margin-top: 10px; display: inline-block; border: 2px solid transparent; min-width: 160px; }
         .stake-high { color: var(--ultra); border-color: var(--ultra); animation: blink 0.8s infinite alternate; }
         @keyframes blink { from { opacity: 1; text-shadow: 0 0 10px var(--ultra); } to { opacity: 0.5; } }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -29,12 +29,14 @@
         .big { color: var(--danger); background: rgba(239, 68, 68, 0.15); }
         .small { color: var(--primary); background: rgba(59, 130, 246, 0.15); }
         .history-tag { display: inline-block; background: #334155; padding: 5px 10px; border-radius: 6px; margin: 4px; font-size: 14px; border-left: 5px solid transparent; }
+        .tag-big { border-left-color: var(--danger); }
+        .tag-small { border-left-color: var(--primary); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header><h2>🎲 九骰旗艦 v6.8 <span style="font-size: 12px; color:var(--warning)">● 5.5 核心回歸版</span></h2></header>
+    <header><h2>🎲 九骰旗艦 v6.9 <span style="font-size: 12px; color:var(--success)">● 核心全修復完成</span></h2></header>
 
     <div class="card">
         <div id="diceButtons"></div>
@@ -47,14 +49,14 @@
 
     <div class="grid">
         <div class="card">
-            <h3>⚠️ 豹子監控 (v5.5 核心)</h3>
+            <h3>⚠️ 豹子監控 (v5.5 穩定版)</h3>
             <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                 <div>
                     <div id="specialProb" class="prob">0.00%</div>
                     <div id="gapDisplay" style="color:var(--warning); font-size:14px; font-weight:bold; margin-top:5px;">未開間隔：0局</div>
                 </div>
                 <div style="text-align: right; width: 55%;">
-                    <div id="patternStatus" style="font-size:12px; margin-bottom:5px; font-weight:bold;">監控中...</div>
+                    <div id="patternStatus" style="font-size:12px; margin-bottom:5px; font-weight:bold;">等待啟動...</div>
                     <div class="ratio-box">
                         <span style="font-size:12px; color:var(--primary); font-weight:bold;">小</span>
                         <div class="ratio-bar"><div id="ratioFill" class="ratio-fill" style="width: 50%;"></div></div>
@@ -74,23 +76,23 @@
                 <tr><td>🔥 規律</td><td id="nextAggr" class="pred-box">-</td><td id="accAggr20">-</td><td id="accAggr100">-</td></tr>
             </table>
             <div style="text-align: center;">
-                <div id="confStars" style="color:var(--warning); margin-top:8px;"></div>
+                <div id="confStars" style="color:var(--warning); margin-top:8px; font-size:18px;"></div>
                 <div id="stakeAdv" class="stake-adv">等待數據</div>
             </div>
         </div>
 
         <div class="card">
             <h3>📈 狀態指示</h3>
-            <div id="roadAdvice" style="background:#020617; padding:12px; border-radius:8px; color:#10b981; font-family:monospace; min-height:40px; border-left:4px solid var(--success); margin-bottom:10px;">掃描中...</div>
-            <div style="display:flex; flex-direction:column; gap:8px;">
-                <div style="display:flex; align-items:center; gap:10px;"><span style="width:40px; font-size:11px;">🌐 趨勢</span><div id="dotsTrend" style="display:flex; gap:3px;"></div></div>
-                <div style="display:flex; align-items:center; gap:10px;"><span style="width:40px; font-size:11px;">🔥 規律</span><div id="dotsAggr" style="display:flex; gap:3px;"></div></div>
+            <div id="roadAdvice" style="background:#020617; padding:12px; border-radius:8px; color:#10b981; font-family:monospace; min-height:45px; border-left:4px solid var(--success); margin-bottom:10px;">掃描中...</div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <div style="display:flex; align-items:center; gap:10px;"><span style="width:40px; font-size:11px; color:#94a3b8;">🌐 趨勢</span><div id="dotsTrend" style="display:flex; gap:3px;"></div></div>
+                <div style="display:flex; align-items:center; gap:10px;"><span style="width:40px; font-size:11px; color:#94a3b8;">🔥 規律</span><div id="dotsAggr" style="display:flex; gap:3px;"></div></div>
             </div>
         </div>
     </div>
 
     <div class="card">
-        <h3>🚀 豹子機率流動 (300px 強化觀察)</h3>
+        <h3>🚀 豹子機率流動 (300px)</h3>
         <div id="chart" style="height:300px;"></div>
     </div>
 
@@ -122,28 +124,20 @@ const app = {
     },
     calculate() { this.calcSpecialProb(); this.analyzeTrend(); this.analyzeAggr(); this.refreshUI(); },
 
-    // --- 完全回歸 v5.5 豹子算法 ---
+    // --- v5.5 穩健豹子監控 ---
     calcSpecialProb() {
-        const rounds = this.data.rounds;
-        const total = rounds.length;
+        const rounds = this.data.rounds; const total = rounds.length;
         const gap = this.data.lastSpecial === null ? total : total - 1 - this.data.lastSpecial;
         let weight = 1.0;
-        
-        // v5.5 平滑間隔權重
         if (gap >= 8 && gap <= 12) weight += (gap - 7) * 0.15;
         else if (gap > 12) weight += 0.75 + (gap - 12) * 0.05;
-
-        // v5.5 溫和數字權重 (最近 2 局)
         if (total >= 2) {
             const last6 = [...rounds[total-1].dice, ...rounds[total-2].dice];
             const counts = {}; last6.forEach(n => counts[n] = (counts[n] || 0) + 1);
             if (Math.max(...Object.values(counts)) >= 3) weight *= 1.2;
         }
-
         const finalProb = Math.min(4.17 * weight, 20.0);
         this.data.probs.push(finalProb.toFixed(2));
-        
-        // UI 更新
         document.getElementById("specialProb").innerText = finalProb.toFixed(2) + "%";
         document.getElementById("specialProb").style.color = finalProb > 15 ? "var(--ultra)" : "white";
         document.getElementById("gapDisplay").innerText = `未開間隔：${gap} 局`;
@@ -154,7 +148,6 @@ const app = {
         else if (finalProb > 10) { statusEl.innerText = "⭐ 升溫中"; statusEl.style.color = "var(--warning)"; }
         else { statusEl.innerText = "🛡️ 穩定監控"; statusEl.style.color = "#94a3b8"; }
 
-        // 比例更新
         const last50 = rounds.slice(-50);
         const bigCount = last50.filter(r => r.size === "大").length;
         const bigRate = last50.length === 0 ? 50 : Math.round((bigCount / last50.length) * 100);
@@ -171,6 +164,7 @@ const app = {
         this.data.predsTrend.push(pred);
     },
 
+    // --- 找回聰明優先級：1-2 循環判定優先 ---
     analyzeAggr() {
         const rounds = this.data.rounds; const total = rounds.length; if(total === 0) return;
         const sizes = rounds.map(r => r.size); const last = sizes[total-1];
@@ -178,14 +172,14 @@ const app = {
         const s = sizes.slice(-12).join("");
         let streak = 0; for(let i=total-1; i>=0; i--) { if(sizes[i] === last) streak++; else break; }
 
-        // v6.6+ 修正後的 1-2 優先邏輯
-        if (s.endsWith("小大大")) { nextAggr = "小"; msg = "【1-2】完結：換向"; stars = 5; }
-        else if (s.endsWith("大小小")) { nextAggr = "大"; msg = "【1-2】完結：換向"; stars = 5; }
-        else if (s.endsWith("小大") && sizes[total-3] === "小") { nextAggr = "大"; msg = "【1-2】補位中"; stars = 4; }
-        else if (s.endsWith("大小") && sizes[total-3] === "大") { nextAggr = "小"; msg = "【1-2】補位中"; stars = 4; }
+        if (s.endsWith("小大大")) { nextAggr = "小"; msg = "【1-2】完結：預期換向"; stars = 5; }
+        else if (s.endsWith("大小小")) { nextAggr = "大"; msg = "【1-2】完結：預期換向"; stars = 5; }
+        else if (s.endsWith("小大") && sizes[total-3] === "小") { nextAggr = "大"; msg = "【1-2】規律：補位點"; stars = 4; }
+        else if (s.endsWith("大小") && sizes[total-3] === "大") { nextAggr = "小"; msg = "【1-2】規律：補位點"; stars = 4; }
+        else if (s.endsWith("大小大小") || s.endsWith("小大小大")) { nextAggr = (last === "大" ? "小" : "大"); msg = "【單跳】規律持續"; stars = 4; }
         else if (streak >= 3) {
             nextAggr = (streak >= 6) ? (last === "大" ? "小" : "大") : last;
-            msg = (streak >= 6) ? "【長龍】斷龍警示" : `【長龍】${last}連開`; stars = streak >= 6 ? 5 : 3;
+            msg = (streak >= 6) ? "【長龍】斷龍警報" : `【長龍】跟隨第 ${streak} 局`; stars = streak >= 6 ? 5 : 3;
         } else { nextAggr = last; stars = 2; }
 
         this.data.predsAggr.push(nextAggr);
@@ -195,9 +189,11 @@ const app = {
         const stakeEl = document.getElementById("stakeAdv");
         if (stars === 5) { stakeEl.innerText = "💰 重注鎖定"; stakeEl.className = "stake-adv stake-high"; }
         else if (stars === 4) { stakeEl.innerText = "🔥 中注跟進"; stakeEl.className = "stake-adv"; stakeEl.style.color = "var(--warning)"; }
-        else { stakeEl.innerText = "🛡️ 觀望一局"; stakeEl.className = "stake-adv"; stakeEl.style.color = "#94a3b8"; }
+        else if (stars === 3) { stakeEl.innerText = "🛡️ 輕注試水"; stakeEl.className = "stake-adv"; stakeEl.style.color = "var(--success)"; }
+        else { stakeEl.innerText = "💤 觀望休息"; stakeEl.className = "stake-adv"; stakeEl.style.color = "#94a3b8"; }
     },
 
+    // --- 修復勝率渲染與燈號 ---
     refreshUI() {
         const rounds = this.data.rounds; const total = rounds.length; if(total === 0) return;
         document.getElementById("nextTrend").innerText = this.data.predsTrend[total-1];
@@ -205,20 +201,20 @@ const app = {
         document.getElementById("nextAggr").innerText = this.data.predsAggr[total-1];
         document.getElementById("nextAggr").className = `pred-box ${this.data.predsAggr[total-1] === '大' ? 'big' : 'small'}`;
         
-        const renderDots = (dotId, predArr, accPrefix) => {
-            let win20 = 0, html = "";
+        const renderStats = (dotId, predArr, prefix) => {
+            let win20 = 0, win100 = 0, html = "";
             for(let i = 1; i < total; i++) {
                 const isWin = predArr[i-1] === rounds[i].size;
-                if(i >= total - 20) {
-                    if(isWin) win20++;
-                    html = `<div style="width:10px; height:10px; border-radius:50%; background:${isWin?'var(--success)':'var(--danger)'}"></div>` + html;
-                }
+                if(i >= total - 20) { if(isWin) win20++; html = `<div style="width:10px; height:10px; border-radius:50%; background:${isWin?'var(--success)':'var(--danger)'}"></div>` + html; }
+                if(i >= total - 100) { if(isWin) win100++; }
             }
-            document.getElementById(`acc${accPrefix}20`).innerText = (win20 / Math.min(total-1, 20) * 100).toFixed(1) + "%";
+            document.getElementById(`acc${prefix}20`).innerText = (win20 / Math.min(total-1, 20) * 100).toFixed(1) + "%";
+            document.getElementById(`acc${prefix}100`).innerText = (win100 / Math.min(total-1, 100) * 100).toFixed(1) + "%";
             document.getElementById(dotId).innerHTML = html;
         };
-        renderDots("dotsTrend", this.data.predsTrend, "Trend");
-        renderDots("dotsAggr", this.data.predsAggr, "Aggr");
+        renderStats("dotsTrend", this.data.predsTrend, "Trend");
+        renderStats("dotsAggr", this.data.predsAggr, "Aggr");
+
         document.getElementById("historyList").innerHTML = rounds.slice(-25).reverse().map(r => 
             `<span class="history-tag ${r.size==='大'?'tag-big':'tag-small'}">${r.dice.join("")} <b style="color:${r.size==='大'?'#f87171':'#38bdf8'}">${r.size}</b> ${r.isSpec?'⭐':''}</span>`
         ).join("");
@@ -226,14 +222,10 @@ const app = {
     },
     updateChart() {
         this.chart.setOption({
-            tooltip: { trigger: 'axis' },
             grid: { top: 30, bottom: 30, left: 40, right: 20 },
-            xAxis: { type: 'category', data: this.data.probs.map((_, i) => i + 1), axisLabel: { color: '#94a3b8' } },
-            yAxis: { type: 'value', min: 0, max: 20, splitLine: { lineStyle: { color: '#334155' } }, axisLabel: { color: '#94a3b8' } },
-            series: [{ 
-                data: this.data.probs, type: 'line', smooth: true, color: '#ff00ea',
-                areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#ff00ea' }, { offset: 1, color: 'transparent' }]), opacity: 0.1 }
-            }]
+            xAxis: { data: this.data.probs.map((_, i) => i + 1) },
+            yAxis: { min: 0, max: 20 },
+            series: [{ data: this.data.probs, type: 'line', smooth: true, color: '#ff00ea' }]
         });
     },
     deleteLast() { if(this.data.rounds.length === 0) return; this.data.rounds.pop(); this.data.probs.pop(); this.data.predsTrend.pop(); this.data.predsAggr.pop(); this.calculate(); }
