@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>九骰旗艦系統 v7.1 籌碼與下三路優化版</title>
+    <title>九骰旗艦系統 v7.2 完美修復版</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <style>
         :root {
@@ -42,12 +42,18 @@
 
         .top-settings { display: flex; justify-content: space-between; align-items: center; background: #020617; padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px; }
         .input-sm { background: #1e293b; border: 1px solid #475569; color: white; padding: 4px 8px; border-radius: 4px; width: 70px; text-align: center; font-weight: bold; }
+
+        /* 💡 v7.2 修復：補回勝負燈號的 CSS 樣式 */
+        .dot-container { display: flex; flex-wrap: wrap; gap: 3px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .dot.win { background: var(--success); box-shadow: 0 0 5px var(--success); }
+        .dot.lose { background: var(--danger); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header><h2>🎲 九骰旗艦系統 v7.1 <span style="font-size: 12px; color:var(--ultra)">● 整數注碼 & 下三路紅藍筆</span></h2></header>
+    <header><h2>🎲 九骰旗艦系統 v7.2 <span style="font-size: 12px; color:var(--success)">● 燈號與視覺完美版</span></h2></header>
 
     <div class="top-settings">
         <div>
@@ -119,8 +125,8 @@
             <div class="volatility-bar"><div id="volatilityFill" class="volatility-fill" style="width: 0%;"></div></div>
 
             <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
-                <div style="display:flex; align-items:center; gap:10px;"><span style="width:40px; font-size:11px; color:#94a3b8;">🌐 趨勢</span><div id="dotsTrend" style="display:flex; gap:3px;"></div></div>
-                <div style="display:flex; align-items:center; gap:10px;"><span style="width:40px; font-size:11px; color:#94a3b8;">🔥 規律</span><div id="dotsAggr" style="display:flex; gap:3px;"></div></div>
+                <div style="display:flex; align-items:center; gap:10px;"><span style="width:40px; font-size:11px; color:#94a3b8;">🌐 趨勢</span><div id="dotsTrend" class="dot-container"></div></div>
+                <div style="display:flex; align-items:center; gap:10px;"><span style="width:40px; font-size:11px; color:#94a3b8;">🔥 規律</span><div id="dotsAggr" class="dot-container"></div></div>
             </div>
         </div>
     </div>
@@ -282,24 +288,23 @@ const app = {
         document.getElementById("roadAdvice").innerText = msg;
         document.getElementById("confStars").innerText = "⭐".repeat(stars);
 
-        // --- 整數化注碼系統 (Integer Stake) ---
         const baseStake = parseInt(document.getElementById('baseStake').value) || 100;
         const stakeEl = document.getElementById("stakeAdv");
         let betAmount = 0;
         
         if (stars === 5) { 
-            betAmount = baseStake * 3; // 重注 3 倍
+            betAmount = baseStake * 3; 
             stakeEl.innerText = `💰 重注鎖定 ($${betAmount})`; 
             stakeEl.className = "stake-adv stake-high"; 
             playSound('heavyStake');
         }
         else if (stars === 4) { 
-            betAmount = baseStake * 2; // 中注 2 倍
+            betAmount = baseStake * 2; 
             stakeEl.innerText = `🔥 中注跟進 ($${betAmount})`; 
             stakeEl.className = "stake-adv"; stakeEl.style.color = "var(--warning)"; 
         }
         else if (stars === 3) { 
-            betAmount = baseStake * 1; // 輕注 1 倍
+            betAmount = baseStake * 1; 
             stakeEl.innerText = `🛡️ 輕注試水 ($${betAmount})`; 
             stakeEl.className = "stake-adv"; stakeEl.style.color = "var(--success)"; 
         }
@@ -342,18 +347,17 @@ const app = {
         document.getElementById('accAggr100').innerText = (win100Aggr / Math.min(total-1, 100) * 100).toFixed(1) + "%";
         document.getElementById('dotsAggr').innerHTML = htmlAggr;
 
-        // --- 衍生下三路/震盪指數 (紅藍筆視覺化) ---
         const volRate = total > 1 ? Math.round((win10Aggr / Math.min(total-1, 10)) * 100) : 50;
         const volFillEl = document.getElementById("volatilityFill");
         const volTextEl = document.getElementById("volatilityText");
         
         volFillEl.style.width = volRate + "%";
         if (volRate >= 50) {
-            volFillEl.style.background = "var(--danger)"; // 紅筆：規律齊整
+            volFillEl.style.background = "var(--danger)"; 
             volTextEl.innerText = `🔴 紅筆/路齊 (${volRate}%)`;
             volTextEl.style.color = "var(--danger)";
         } else {
-            volFillEl.style.background = "var(--primary)"; // 藍筆：震盪亂局
+            volFillEl.style.background = "var(--primary)"; 
             volTextEl.innerText = `🔵 藍筆/路亂 (${volRate}%)`;
             volTextEl.style.color = "var(--primary)";
         }
