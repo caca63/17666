@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>九骰旗艦系統 v6.9 - 聰明規律修正版</title>
+    <title>九骰旗艦系統 v7.0 專業操盤版</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <style>
         :root {
@@ -16,13 +16,21 @@
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; margin-top: 12px; }
         .card { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #334155; }
         .dice-btn { width: 44px; height: 44px; font-size: 20px; margin: 3px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; cursor: pointer; }
-        .prob { font-size: 42px; font-weight: 800; font-family: 'Courier New'; color: white; line-height: 1; }
+        .dice-btn:hover { background: var(--primary); }
+        .prob { font-size: 42px; font-weight: 800; font-family: 'Courier New'; color: white; line-height: 1; transition: 0.3s; }
+        
         .ratio-box { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; margin-top: 5px; }
         .ratio-bar { flex-grow: 1; height: 14px; background: var(--primary); border-radius: 7px; overflow: hidden; display: flex; flex-direction: row-reverse; }
         .ratio-fill { height: 100%; background: var(--danger); transition: 0.5s; }
-        .stake-adv { font-size: 20px; font-weight: bold; padding: 8px 25px; border-radius: 20px; margin-top: 10px; display: inline-block; border: 2px solid transparent; min-width: 160px; }
+        
+        /* 震盪指數條 (下三路概念) */
+        .volatility-bar { width: 100%; height: 8px; background: var(--primary); border-radius: 4px; overflow: hidden; margin-top: 5px; }
+        .volatility-fill { height: 100%; background: var(--danger); transition: 0.5s; }
+
+        .stake-adv { font-size: 20px; font-weight: bold; padding: 6px 20px; border-radius: 20px; margin-top: 5px; display: inline-block; border: 2px solid transparent; min-width: 160px; }
         .stake-high { color: var(--ultra); border-color: var(--ultra); animation: blink 0.8s infinite alternate; }
         @keyframes blink { from { opacity: 1; text-shadow: 0 0 10px var(--ultra); } to { opacity: 0.5; } }
+        
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { padding: 10px; text-align: center; border-bottom: 1px solid #334155; font-size: 14px; }
         .pred-box { font-size: 24px; font-weight: bold; border-radius: 6px; padding: 5px 10px; }
@@ -31,12 +39,32 @@
         .history-tag { display: inline-block; background: #334155; padding: 5px 10px; border-radius: 6px; margin: 4px; font-size: 14px; border-left: 5px solid transparent; }
         .tag-big { border-left-color: var(--danger); }
         .tag-small { border-left-color: var(--primary); }
+
+        /* 頂部設定列 */
+        .top-settings { display: flex; justify-content: space-between; align-items: center; background: #020617; padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px; }
+        .input-sm { background: #1e293b; border: 1px solid #475569; color: white; padding: 4px 8px; border-radius: 4px; width: 70px; text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header><h2>🎲 九骰旗艦 v6.9 <span style="font-size: 12px; color:var(--success)">● 核心全修復完成</span></h2></header>
+    <header><h2>🎲 九骰旗艦系統 v7.0 <span style="font-size: 12px; color:var(--ultra)">● 專業操盤終極版</span></h2></header>
+
+    <div class="top-settings">
+        <div>
+            <span style="color:#94a3b8; font-size:13px;">初始本金:</span> 
+            <input type="number" id="baseBankroll" value="10000" class="input-sm" onchange="app.resetBankroll()">
+            <span style="color:#94a3b8; font-size:13px; margin-left:10px;">基碼(Unit):</span> 
+            <input type="number" id="baseStake" value="100" class="input-sm">
+        </div>
+        <div style="font-size:18px; font-weight:bold;">
+            目前虛擬資金：<span id="currentBankroll" style="color:var(--success); font-size:22px;">10000</span>
+        </div>
+        <div style="display:flex; gap:15px; font-size:13px; color:#94a3b8;">
+            <label><input type="checkbox" id="autoSimToggle" checked> 自動模擬配注</label>
+            <label><input type="checkbox" id="soundToggle" checked> 🔔 警報音效</label>
+        </div>
+    </div>
 
     <div class="card">
         <div id="diceButtons"></div>
@@ -76,15 +104,22 @@
                 <tr><td>🔥 規律</td><td id="nextAggr" class="pred-box">-</td><td id="accAggr20">-</td><td id="accAggr100">-</td></tr>
             </table>
             <div style="text-align: center;">
-                <div id="confStars" style="color:var(--warning); margin-top:8px; font-size:18px;"></div>
+                <div id="confStars" style="color:var(--warning); margin-top:5px; font-size:14px; height:18px;"></div>
                 <div id="stakeAdv" class="stake-adv">等待數據</div>
             </div>
         </div>
 
         <div class="card">
-            <h3>📈 狀態指示</h3>
+            <h3>📈 狀態與衍生震盪指數</h3>
             <div id="roadAdvice" style="background:#020617; padding:12px; border-radius:8px; color:#10b981; font-family:monospace; min-height:45px; border-left:4px solid var(--success); margin-bottom:10px;">掃描中...</div>
-            <div style="display:flex; flex-direction:column; gap:10px;">
+            
+            <div style="font-size:12px; color:#94a3b8; margin-bottom:3px; display:flex; justify-content:space-between;">
+                <span>衍生規律震盪指數 (近10局)</span>
+                <span id="volatilityText">50% (中立)</span>
+            </div>
+            <div class="volatility-bar"><div id="volatilityFill" class="volatility-fill" style="width: 50%;"></div></div>
+
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
                 <div style="display:flex; align-items:center; gap:10px;"><span style="width:40px; font-size:11px; color:#94a3b8;">🌐 趨勢</span><div id="dotsTrend" style="display:flex; gap:3px;"></div></div>
                 <div style="display:flex; align-items:center; gap:10px;"><span style="width:40px; font-size:11px; color:#94a3b8;">🔥 規律</span><div id="dotsAggr" style="display:flex; gap:3px;"></div></div>
             </div>
@@ -100,9 +135,50 @@
 </div>
 
 <script>
+// --- 音效引擎 (Web Audio API) ---
+let audioCtx = null;
+function playSound(type) {
+    if (!document.getElementById('soundToggle').checked) return;
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        if (type === 'ultra') { // 豹子警報音
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.2);
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+        } else if (type === 'heavyStake') { // 重注提示音 (清脆雙音)
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1046, audioCtx.currentTime); // C6
+            osc.frequency.setValueAtTime(1318, audioCtx.currentTime + 0.1); // E6
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+        }
+    } catch(e) { console.log("Audio not supported or blocked"); }
+}
+
 const app = {
-    data: { rounds: [], selected: [], probs: [], predsTrend: [], predsAggr: [], intervals: [], lastSpecial: null },
-    init() { this.renderBtns(); this.chart = echarts.init(document.getElementById('chart')); window.onresize = () => this.chart.resize(); this.updateChart(); },
+    data: { 
+        rounds: [], selected: [], probs: [], predsTrend: [], predsAggr: [], intervals: [], lastSpecial: null,
+        bankroll: 10000, currentBetAmount: 0 // 新增資金狀態
+    },
+    init() { 
+        this.resetBankroll();
+        this.renderBtns(); 
+        this.chart = echarts.init(document.getElementById('chart')); 
+        window.onresize = () => this.chart.resize(); 
+        this.updateChart(); 
+    },
+    resetBankroll() {
+        this.data.bankroll = parseFloat(document.getElementById('baseBankroll').value) || 10000;
+        document.getElementById('currentBankroll').innerText = this.data.bankroll;
+    },
     renderBtns() {
         const c = document.getElementById("diceButtons");
         for(let i=1; i<=6; i++) {
@@ -115,16 +191,41 @@ const app = {
         if(this.data.selected.length !== 3) return;
         const dice = [...this.data.selected]; const sum = dice.reduce((a,b)=>a+b,0);
         const isSpec = (dice[0]===dice[1] && dice[1]===dice[2]) || sum === 17;
-        this.data.rounds.push({ dice, sum, isSpec, size: sum >= 11 ? "大" : "小" });
+        const actualSize = sum >= 11 ? "大" : "小";
+        
+        // 結算上一局的虛擬資金
+        let isWin = false;
+        let betAmount = this.data.currentBetAmount;
+        if (this.data.predsAggr.length > 0) {
+            const lastPred = this.data.predsAggr[this.data.predsAggr.length - 1];
+            isWin = (lastPred === actualSize);
+            if (document.getElementById('autoSimToggle').checked && betAmount > 0) {
+                if (isWin) this.data.bankroll += betAmount; // 贏 1:1
+                else this.data.bankroll -= betAmount; // 輸掉本金
+            }
+        }
+
+        // 紀錄本局資訊 (包含下注金額，方便撤銷)
+        this.data.rounds.push({ dice, sum, isSpec, size: actualSize, betAmount: betAmount, isWin: isWin });
+        
         if(isSpec) {
             if(this.data.lastSpecial !== null) this.data.intervals.push(this.data.rounds.length - 1 - this.data.lastSpecial);
             this.data.lastSpecial = this.data.rounds.length - 1;
         }
-        this.data.selected = []; document.getElementById("selectedDice").innerText = "-"; this.calculate();
+        
+        this.data.selected = []; document.getElementById("selectedDice").innerText = "-"; 
+        
+        // 更新資金UI
+        const brEl = document.getElementById('currentBankroll');
+        brEl.innerText = Math.floor(this.data.bankroll);
+        brEl.style.color = this.data.bankroll >= parseFloat(document.getElementById('baseBankroll').value) ? "var(--success)" : "var(--danger)";
+
+        this.calculate();
     },
+    
+    // --- 核心算法 ---
     calculate() { this.calcSpecialProb(); this.analyzeTrend(); this.analyzeAggr(); this.refreshUI(); },
 
-    // --- v5.5 穩健豹子監控 ---
     calcSpecialProb() {
         const rounds = this.data.rounds; const total = rounds.length;
         const gap = this.data.lastSpecial === null ? total : total - 1 - this.data.lastSpecial;
@@ -138,16 +239,19 @@ const app = {
         }
         const finalProb = Math.min(4.17 * weight, 20.0);
         this.data.probs.push(finalProb.toFixed(2));
+        
+        // UI 更新與音效
         document.getElementById("specialProb").innerText = finalProb.toFixed(2) + "%";
-        document.getElementById("specialProb").style.color = finalProb > 15 ? "var(--ultra)" : "white";
+        if (finalProb >= 15) {
+            document.getElementById("specialProb").className = "prob level-ultra";
+            playSound('ultra'); // 觸發豹子警報
+        } else {
+            document.getElementById("specialProb").className = "prob";
+            document.getElementById("specialProb").style.color = finalProb > 12 ? "var(--hot)" : "white";
+        }
         document.getElementById("gapDisplay").innerText = `未開間隔：${gap} 局`;
         document.getElementById("historyIntervals").innerText = "歷史間隔：" + [...this.data.intervals].reverse().slice(0,5).join(", ");
         
-        const statusEl = document.getElementById("patternStatus");
-        if (finalProb > 15) { statusEl.innerText = "🔥 高機率區間"; statusEl.style.color = "var(--ultra)"; }
-        else if (finalProb > 10) { statusEl.innerText = "⭐ 升溫中"; statusEl.style.color = "var(--warning)"; }
-        else { statusEl.innerText = "🛡️ 穩定監控"; statusEl.style.color = "#94a3b8"; }
-
         const last50 = rounds.slice(-50);
         const bigCount = last50.filter(r => r.size === "大").length;
         const bigRate = last50.length === 0 ? 50 : Math.round((bigCount / last50.length) * 100);
@@ -164,7 +268,6 @@ const app = {
         this.data.predsTrend.push(pred);
     },
 
-    // --- 找回聰明優先級：1-2 循環判定優先 ---
     analyzeAggr() {
         const rounds = this.data.rounds; const total = rounds.length; if(total === 0) return;
         const sizes = rounds.map(r => r.size); const last = sizes[total-1];
@@ -186,14 +289,36 @@ const app = {
         document.getElementById("roadAdvice").innerText = msg;
         document.getElementById("confStars").innerText = "⭐".repeat(stars);
 
+        // 資金與配注引擎
+        const baseStake = parseFloat(document.getElementById('baseStake').value) || 100;
         const stakeEl = document.getElementById("stakeAdv");
-        if (stars === 5) { stakeEl.innerText = "💰 重注鎖定"; stakeEl.className = "stake-adv stake-high"; }
-        else if (stars === 4) { stakeEl.innerText = "🔥 中注跟進"; stakeEl.className = "stake-adv"; stakeEl.style.color = "var(--warning)"; }
-        else if (stars === 3) { stakeEl.innerText = "🛡️ 輕注試水"; stakeEl.className = "stake-adv"; stakeEl.style.color = "var(--success)"; }
-        else { stakeEl.innerText = "💤 觀望休息"; stakeEl.className = "stake-adv"; stakeEl.style.color = "#94a3b8"; }
+        let betAmount = 0;
+        
+        if (stars === 5) { 
+            betAmount = baseStake * 3; 
+            stakeEl.innerText = `💰 重注鎖定 ($${betAmount})`; 
+            stakeEl.className = "stake-adv stake-high"; 
+            playSound('heavyStake'); // 重注音效
+        }
+        else if (stars === 4) { 
+            betAmount = baseStake * 1.5; 
+            stakeEl.innerText = `🔥 中注跟進 ($${betAmount})`; 
+            stakeEl.className = "stake-adv"; stakeEl.style.color = "var(--warning)"; 
+        }
+        else if (stars === 3) { 
+            betAmount = baseStake * 0.5; 
+            stakeEl.innerText = `🛡️ 輕注試水 ($${betAmount})`; 
+            stakeEl.className = "stake-adv"; stakeEl.style.color = "var(--success)"; 
+        }
+        else { 
+            betAmount = 0; 
+            stakeEl.innerText = "💤 觀望休息 ($0)"; 
+            stakeEl.className = "stake-adv"; stakeEl.style.color = "#94a3b8"; 
+        }
+        
+        this.data.currentBetAmount = betAmount; // 儲存預計下注金額供下局結算
     },
 
-    // --- 修復勝率渲染與燈號 ---
     refreshUI() {
         const rounds = this.data.rounds; const total = rounds.length; if(total === 0) return;
         document.getElementById("nextTrend").innerText = this.data.predsTrend[total-1];
@@ -201,23 +326,47 @@ const app = {
         document.getElementById("nextAggr").innerText = this.data.predsAggr[total-1];
         document.getElementById("nextAggr").className = `pred-box ${this.data.predsAggr[total-1] === '大' ? 'big' : 'small'}`;
         
-        const renderStats = (dotId, predArr, prefix) => {
-            let win20 = 0, win100 = 0, html = "";
-            for(let i = 1; i < total; i++) {
-                const isWin = predArr[i-1] === rounds[i].size;
-                if(i >= total - 20) { if(isWin) win20++; html = `<div style="width:10px; height:10px; border-radius:50%; background:${isWin?'var(--success)':'var(--danger)'}"></div>` + html; }
-                if(i >= total - 100) { if(isWin) win100++; }
-            }
-            document.getElementById(`acc${prefix}20`).innerText = (win20 / Math.min(total-1, 20) * 100).toFixed(1) + "%";
-            document.getElementById(`acc${prefix}100`).innerText = (win100 / Math.min(total-1, 100) * 100).toFixed(1) + "%";
-            document.getElementById(dotId).innerHTML = html;
-        };
-        renderStats("dotsTrend", this.data.predsTrend, "Trend");
-        renderStats("dotsAggr", this.data.predsAggr, "Aggr");
+        // 震盪指數與勝負點計算
+        let win20Trend = 0, win100Trend = 0, htmlTrend = "";
+        let win20Aggr = 0, win100Aggr = 0, htmlAggr = "";
+        let win10Aggr = 0; // 用於計算震盪指數
+        
+        for(let i = 1; i < total; i++) {
+            const isWinTrend = this.data.predsTrend[i-1] === rounds[i].size;
+            const isWinAggr = this.data.predsAggr[i-1] === rounds[i].size;
+            
+            // 趨勢統計
+            if(i >= total - 20) { if(isWinTrend) win20Trend++; htmlTrend = `<div class="dot ${isWinTrend?'win':'lose'}"></div>` + htmlTrend; }
+            if(i >= total - 100 && isWinTrend) win100Trend++;
+            
+            // 規律統計
+            if(i >= total - 20) { if(isWinAggr) win20Aggr++; htmlAggr = `<div class="dot ${isWinAggr?'win':'lose'}"></div>` + htmlAggr; }
+            if(i >= total - 100 && isWinAggr) win100Aggr++;
+            if(i >= total - 10 && isWinAggr) win10Aggr++;
+        }
+        
+        // 更新勝率文字
+        document.getElementById('accTrend20').innerText = (win20Trend / Math.min(total-1, 20) * 100).toFixed(1) + "%";
+        document.getElementById('accTrend100').innerText = (win100Trend / Math.min(total-1, 100) * 100).toFixed(1) + "%";
+        document.getElementById('dotsTrend').innerHTML = htmlTrend;
 
+        document.getElementById('accAggr20').innerText = (win20Aggr / Math.min(total-1, 20) * 100).toFixed(1) + "%";
+        document.getElementById('accAggr100').innerText = (win100Aggr / Math.min(total-1, 100) * 100).toFixed(1) + "%";
+        document.getElementById('dotsAggr').innerHTML = htmlAggr;
+
+        // 衍生震盪指數更新 (下三路概念)
+        const volRate = total > 1 ? Math.round((win10Aggr / Math.min(total-1, 10)) * 100) : 50;
+        document.getElementById("volatilityFill").style.width = volRate + "%";
+        let volStatus = "中立";
+        if (volRate >= 60) volStatus = "適合跟路 (紅)";
+        else if (volRate <= 40) volStatus = "震盪亂局 (藍)";
+        document.getElementById("volatilityText").innerText = `${volRate}% (${volStatus})`;
+
+        // 歷史
         document.getElementById("historyList").innerHTML = rounds.slice(-25).reverse().map(r => 
             `<span class="history-tag ${r.size==='大'?'tag-big':'tag-small'}">${r.dice.join("")} <b style="color:${r.size==='大'?'#f87171':'#38bdf8'}">${r.size}</b> ${r.isSpec?'⭐':''}</span>`
         ).join("");
+        
         this.updateChart();
     },
     updateChart() {
@@ -228,8 +377,24 @@ const app = {
             series: [{ data: this.data.probs, type: 'line', smooth: true, color: '#ff00ea' }]
         });
     },
-    deleteLast() { if(this.data.rounds.length === 0) return; this.data.rounds.pop(); this.data.probs.pop(); this.data.predsTrend.pop(); this.data.predsAggr.pop(); this.calculate(); }
+    
+    deleteLast() { 
+        if(this.data.rounds.length === 0) return; 
+        const lastRound = this.data.rounds.pop(); 
+        this.data.probs.pop(); 
+        this.data.predsTrend.pop(); 
+        this.data.predsAggr.pop(); 
+        
+        // 撤銷時退回資金
+        if (document.getElementById('autoSimToggle').checked && lastRound.betAmount > 0) {
+            if (lastRound.isWin) this.data.bankroll -= lastRound.betAmount; // 收回贏的
+            else this.data.bankroll += lastRound.betAmount; // 退回輸的
+            document.getElementById('currentBankroll').innerText = Math.floor(this.data.bankroll);
+        }
+        this.calculate(); 
+    }
 };
+
 app.init();
 </script>
 </body>
