@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>九骰旗艦系統 v7.2 完美修復版</title>
+    <title>九骰旗艦系統 v7.3 豹子歸位版</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <style>
         :root {
@@ -23,7 +23,6 @@
         .ratio-bar { flex-grow: 1; height: 14px; background: var(--primary); border-radius: 7px; overflow: hidden; display: flex; flex-direction: row-reverse; }
         .ratio-fill { height: 100%; background: var(--danger); transition: 0.5s; }
         
-        /* 下三路/震盪指數條 */
         .volatility-bar { width: 100%; height: 10px; background: #334155; border-radius: 5px; overflow: hidden; margin-top: 5px; }
         .volatility-fill { height: 100%; transition: 0.5s; }
 
@@ -43,7 +42,6 @@
         .top-settings { display: flex; justify-content: space-between; align-items: center; background: #020617; padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px; }
         .input-sm { background: #1e293b; border: 1px solid #475569; color: white; padding: 4px 8px; border-radius: 4px; width: 70px; text-align: center; font-weight: bold; }
 
-        /* 💡 v7.2 修復：補回勝負燈號的 CSS 樣式 */
         .dot-container { display: flex; flex-wrap: wrap; gap: 3px; }
         .dot { width: 12px; height: 12px; border-radius: 50%; }
         .dot.win { background: var(--success); box-shadow: 0 0 5px var(--success); }
@@ -53,7 +51,7 @@
 <body>
 
 <div class="container">
-    <header><h2>🎲 九骰旗艦系統 v7.2 <span style="font-size: 12px; color:var(--success)">● 燈號與視覺完美版</span></h2></header>
+    <header><h2>🎲 九骰旗艦系統 v7.3 <span style="font-size: 12px; color:var(--ultra)">● 豹子機率原味歸位版</span></h2></header>
 
     <div class="top-settings">
         <div>
@@ -82,14 +80,14 @@
 
     <div class="grid">
         <div class="card">
-            <h3>⚠️ 豹子監控 (v5.5 穩定版)</h3>
+            <h3>⚠️ 豹子監控 (v5.5 原味版)</h3>
             <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                 <div>
                     <div id="specialProb" class="prob">0.00%</div>
                     <div id="gapDisplay" style="color:var(--warning); font-size:14px; font-weight:bold; margin-top:5px;">未開間隔：0局</div>
                 </div>
                 <div style="text-align: right; width: 55%;">
-                    <div id="patternStatus" style="font-size:12px; margin-bottom:5px; font-weight:bold;">等待啟動...</div>
+                    <div id="patternStatus" style="font-size:12px; margin-bottom:5px; font-weight:bold; color:var(--warning);">掃描中...</div>
                     <div class="ratio-box">
                         <span style="font-size:12px; color:var(--primary); font-weight:bold;">小</span>
                         <div class="ratio-bar"><div id="ratioFill" class="ratio-fill" style="width: 50%;"></div></div>
@@ -226,28 +224,47 @@ const app = {
     
     calculate() { this.calcSpecialProb(); this.analyzeTrend(); this.analyzeAggr(); this.refreshUI(); },
 
+    // 💡 真正還原 v5.5 豹子算法：近 3 局 9 顆骰子偵測
     calcSpecialProb() {
         const rounds = this.data.rounds; const total = rounds.length;
         const gap = this.data.lastSpecial === null ? total : total - 1 - this.data.lastSpecial;
-        let weight = 1.0;
-        if (gap >= 8 && gap <= 12) weight += (gap - 7) * 0.15;
-        else if (gap > 12) weight += 0.75 + (gap - 12) * 0.05;
-        if (total >= 2) {
-            const last6 = [...rounds[total-1].dice, ...rounds[total-2].dice];
-            const counts = {}; last6.forEach(n => counts[n] = (counts[n] || 0) + 1);
-            if (Math.max(...Object.values(counts)) >= 3) weight *= 1.2;
+        let weight = 1.0; 
+        weight += Math.exp(-Math.pow(gap - 8, 2) / 10); 
+        if(gap > 15) weight += (gap-15)*0.1;
+        
+        let patternBonus = 1.0; let patternDesc = "";
+        
+        // 核心歸位：掃描近 3 局
+        if(total >= 3) {
+            const all9 = rounds.slice(-3).flatMap(r => r.dice);
+            const counts = {}; all9.forEach(n => counts[n] = (counts[n] || 0) + 1);
+            const freq = Object.values(counts).sort((a,b)=>b-a);
+            
+            // v5.5 經典條件
+            if(freq[0] >= 4 && freq[1] >= 4) { 
+                patternBonus = 2.5; patternDesc = "🔥 4同+4同 特徵！"; 
+            }
+            else if(freq[0] >= 3 && freq[1] >= 3) { 
+                patternBonus = 1.8; patternDesc = "⭐ 號碼高度密集"; 
+            }
         }
-        const finalProb = Math.min(4.17 * weight, 20.0);
+
+        const finalProb = Math.min(4.17 * weight * patternBonus, 20.0);
         this.data.probs.push(finalProb.toFixed(2));
         
         document.getElementById("specialProb").innerText = finalProb.toFixed(2) + "%";
+        document.getElementById("patternStatus").innerText = patternDesc || "監控中...";
+        
         if (finalProb >= 15) {
             document.getElementById("specialProb").className = "prob level-ultra";
+            document.getElementById("patternStatus").style.color = "var(--ultra)";
             playSound('ultra'); 
         } else {
             document.getElementById("specialProb").className = "prob";
             document.getElementById("specialProb").style.color = finalProb > 12 ? "var(--hot)" : "white";
+            document.getElementById("patternStatus").style.color = "var(--warning)";
         }
+        
         document.getElementById("gapDisplay").innerText = `未開間隔：${gap} 局`;
         document.getElementById("historyIntervals").innerText = "歷史間隔：" + [...this.data.intervals].reverse().slice(0,5).join(", ");
         
